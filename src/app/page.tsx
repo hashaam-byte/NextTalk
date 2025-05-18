@@ -21,26 +21,81 @@ const TiltCard = ({ children, className }) => {
   return (
     <div
       ref={ref}
-      className={`transition-transform duration-200 ${className}`}
+      className={`transform-gpu transition-transform duration-200 ${className}`}
+      style={{
+        transform: isHovered
+          ? `perspective(1000px) rotateX(${position.y * 10}deg) rotateY(${position.x * -10}deg) scale3d(1.05, 1.05, 1.05)`
+          : 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+        transformStyle: 'preserve-3d',
+        WebkitTransformStyle: 'preserve-3d',
+      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setPosition({ x: 0, y: 0 });
       }}
       onMouseMove={handleMouseMove}
-      style={{
-        transform: isHovered
-          ? `perspective(1000px) rotateX(${position.y * 10}deg) rotateY(${position.x * -10}deg) scale3d(1.05, 1.05, 1.05)`
-          : 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-      }}
     >
       {children}
     </div>
   );
 };
 
+// Add this component before the Home component
+const MobileMenu = ({ isOpen, onClose }) => {
+  return (
+    <motion.div
+      className={`fixed inset-0 z-50 lg:hidden ${isOpen ? 'block' : 'hidden'}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: isOpen ? 1 : 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+      <motion.div
+        className="absolute right-0 top-0 h-full w-64 bg-gradient-to-b from-gray-900 to-gray-800 shadow-xl"
+        initial={{ x: "100%" }}
+        animate={{ x: isOpen ? 0 : "100%" }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="flex justify-end p-4">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
+            ✕
+          </button>
+        </div>
+        <div className="px-4 py-2 space-y-4">
+          {["Features", "Privacy", "Help Center", "Blog", "For Business", "Download"].map((item) => (
+            <Link
+              key={item}
+              href={`#${item.toLowerCase().replace(" ", "")}`}
+              className="block py-2 hover:text-cyan-300 transition-colors"
+              onClick={onClose}
+            >
+              {item}
+            </Link>
+          ))}
+          <div className="pt-4 space-y-2">
+            <Link
+              href="/login"
+              className="block w-full py-2 text-center rounded-full bg-white/10 hover:bg-white/20 transition-all"
+            >
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="block w-full py-2 text-center rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 hover:opacity-90"
+            >
+              Sign Up
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 export default function Home() {
   const { scrollYProgress } = useScroll();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.9]);
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
   const y = useTransform(scrollYProgress, [0, 0.2], [0, -50]);
@@ -53,6 +108,9 @@ export default function Home() {
         <div className="absolute bottom-1/3 right-0 w-80 h-80 rounded-full bg-cyan-400/20 blur-3xl"></div>
         <div className="absolute top-2/3 left-1/4 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl"></div>
       </div>
+
+      {/* Mobile Menu */}
+      <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
       {/* Navigation Bar */}
       <nav className="sticky top-0 z-50 backdrop-blur-lg border-b border-white/10 bg-black/10">
@@ -72,7 +130,8 @@ export default function Home() {
             </span>
           </motion.div>
           
-          <div className="hidden md:flex space-x-6 text-sm">
+          {/* Desktop Menu */}
+          <div className="hidden lg:flex space-x-6 text-sm">
             {["Features", "Privacy", "Help Center", "Blog", "For Business", "Download"].map((item, i) => (
               <motion.div
                 key={item}
@@ -91,7 +150,16 @@ export default function Home() {
             ))}
           </div>
           
-          <div className="space-x-2 md:space-x-4">
+          {/* Mobile Menu Button */}
+          <button
+            className="lg:hidden p-2 hover:bg-white/10 rounded-full"
+            onClick={() => setIsMobileMenuOpen(true)}
+          >
+            ☰
+          </button>
+          
+          {/* Auth Buttons */}
+          <div className="hidden lg:flex space-x-4">
             <Link 
               href="/login" 
               className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all text-sm border border-white/10 shadow-lg hover:shadow-cyan-500/20"
@@ -108,14 +176,16 @@ export default function Home() {
         </div>
       </nav>
 
+      {/* Rest of the page content */}
       <div className="container mx-auto px-4 pt-8 pb-16 relative z-10">
         {/* Hero Section */}
         <motion.main 
           style={{ scale, opacity, y }}
-          className="flex flex-col lg:flex-row items-center justify-between gap-12 mb-20 pt-8"
+          className="flex flex-col lg:flex-row items-center justify-between gap-8 mb-12 sm:mb-20 pt-4 sm:pt-8 px-4 sm:px-0"
         >
+          {/* Text content */}
           <motion.div 
-            className="lg:w-1/2"
+            className="w-full lg:w-1/2 text-center lg:text-left space-y-6"
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7 }}
@@ -126,7 +196,7 @@ export default function Home() {
             <p className="text-lg text-gray-300 mb-8">
               NextTalk brings your conversations to life with real-time messaging, voice calls, status updates, and more—all in one beautiful app.
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Link 
                 href="/register" 
                 className="relative px-6 py-3 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/30 transition-all text-sm overflow-hidden group"
@@ -143,14 +213,13 @@ export default function Home() {
             </div>
           </motion.div>
 
+          {/* Chat interface - Ensure visibility on mobile */}
           <motion.div 
-            className="lg:w-1/2 relative"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
+            className="w-full lg:w-1/2 relative px-4 sm:px-0 perspective-1000"
+            style={{ transformStyle: 'preserve-3d' }}
           >
             <TiltCard className="relative w-full max-w-md mx-auto">
-              <div className="relative h-96 w-full md:h-80 lg:h-96 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="relative h-[420px] sm:h-96 w-full rounded-2xl overflow-hidden shadow-2xl">
                 {/* Glow effects */}
                 <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500 rounded-full filter blur-3xl opacity-30"></div>
                 <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-cyan-400 rounded-full filter blur-3xl opacity-30"></div>
@@ -236,9 +305,9 @@ export default function Home() {
         </motion.main>
 
         {/* Features Section */}
-        <section id="features" className="py-16 border-t border-white/10">
+        <section id="features" className="py-8 sm:py-16 border-t border-white/10 px-4 sm:px-0">
           <motion.h2 
-            className="text-3xl font-bold text-center mb-16"
+            className="text-3xl font-bold text-center mb-6"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -279,22 +348,24 @@ export default function Home() {
               </ul>
             </motion.div>
             
+            {/* Updated mobile-friendly 3D card */}
             <motion.div 
-              className="md:w-1/2"
+              className="md:w-1/2 w-full h-[400px] sm:h-64 perspective-1000"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
               viewport={{ once: true }}
+              style={{ transformStyle: 'preserve-3d' }}
             >
-              <TiltCard className="bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden">
-                <div className="relative h-64 w-full border border-white/20 rounded-2xl overflow-hidden shadow-lg shadow-purple-500/10">
+              <TiltCard className="h-full bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden">
+                <div className="relative h-full w-full border border-white/20 rounded-2xl overflow-hidden shadow-lg shadow-purple-500/10">
                   {/* Glow effects */}
                   <div className="absolute -top-20 -right-20 w-40 h-40 bg-cyan-400 rounded-full filter blur-3xl opacity-20"></div>
                   <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500 rounded-full filter blur-3xl opacity-20"></div>
                   
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur-md"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-full max-w-xs bg-black/30 rounded-xl p-3 backdrop-blur-md border border-white/20 shadow-lg">
+                  <div className="absolute inset-0 flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-black/30 rounded-xl p-3 backdrop-blur-md border border-white/20 shadow-lg">
                       <div className="flex items-center mb-3">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-purple-500 shadow-md shadow-purple-500/30"></div>
                         <div className="ml-2 flex-1">
@@ -320,33 +391,35 @@ export default function Home() {
           
           {/* Row 2: Image and Text Features */}
           <div className="flex flex-col-reverse md:flex-row items-center mb-20">
+            {/* Updated mobile-friendly 3D card */}
             <motion.div 
-              className="md:w-1/2"
+              className="md:w-1/2 w-full h-[400px] sm:h-64 perspective-1000"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
+              style={{ transformStyle: 'preserve-3d' }}
             >
-              <TiltCard className="bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden">
-                <div className="relative h-64 w-full border border-white/20 rounded-2xl overflow-hidden shadow-lg shadow-purple-500/10">
+              <TiltCard className="h-full bg-white/5 backdrop-blur-lg rounded-2xl overflow-hidden">
+                <div className="relative h-full w-full border border-white/20 rounded-2xl overflow-hidden shadow-lg shadow-purple-500/10">
                   {/* Glow effects */}
                   <div className="absolute -top-20 -left-20 w-40 h-40 bg-blue-500 rounded-full filter blur-3xl opacity-20"></div>
                   <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-purple-600 rounded-full filter blur-3xl opacity-20"></div>
                   
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur-md"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-full max-w-xs bg-black/30 rounded-xl p-3 backdrop-blur-md border border-white/20 shadow-lg">
-                      <div className="flex items-center justify-center mb-3">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-400 to-purple-500 flex items-center justify-center text-2xl shadow-lg shadow-purple-500/30">📞</div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold">Group Call: Team Project</p>
-                        <p className="text-sm text-gray-300">3 participants • 12:45</p>
-                        <div className="flex justify-center mt-4 space-x-4">
-                          <div className="w-12 h-12 rounded-full bg-red-500/80 flex items-center justify-center shadow-lg shadow-red-500/30">🔴</div>
-                          <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">🔊</div>
-                          <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">📹</div>
+                  <div className="absolute inset-0 flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-black/30 rounded-xl p-3 backdrop-blur-md border border-white/20 shadow-lg">
+                      <div className="flex items-center mb-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-pink-400 to-purple-500 shadow-md shadow-purple-500/30"></div>
+                        <div className="ml-2 flex-1">
+                          <div className="text-sm font-semibold">Group Call: Team Project</div>
+                          <div className="text-xs text-gray-400">3 participants • 12:45</div>
                         </div>
+                      </div>
+                      <div className="flex justify-center space-x-3 mt-3">
+                        <div className="w-8 h-8 rounded-full bg-red-500/80 flex items-center justify-center text-sm shadow-lg shadow-red-500/30">🔴</div>
+                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-sm">🔊</div>
+                        <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-sm">📹</div>
                       </div>
                     </div>
                   </div>
@@ -384,7 +457,7 @@ export default function Home() {
           </div>
           
           {/* Feature Grid - More Features */}
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {[
               {
                 icon: "🔒",
@@ -442,7 +515,7 @@ export default function Home() {
         </section>
         
         {/* Privacy Section */}
-        <section id="privacy" className="py-16 border-t border-white/10">
+        <section id="privacy" className="py-8 sm:py-16 border-t border-white/10 px-4 sm:px-0">
           <motion.h2 
             className="text-3xl font-bold text-center mb-6"
             initial={{ opacity: 0, y: 20 }}
@@ -464,7 +537,7 @@ export default function Home() {
             Your messages and calls are secured with end-to-end encryption, which means they stay between you and the people you choose to communicate with.
           </motion.p>
           
-          <div className="flex flex-col md:flex-row gap-8 mb-12">
+          <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 mb-8 sm:mb-12">
             <motion.div 
               className="md:w-1/2"
               initial={{ opacity: 0, y: 20 }}
@@ -480,7 +553,6 @@ export default function Home() {
                     <span className="text-xl">🔒</span>
                   </div>
                   <h3 className="text-xl font-semibold mb-2">End-to-End Encryption</h3>
-                  // Continuing from where the code was cut off in the Privacy section
                   <p className="text-gray-300">
                     Messages and calls are secured so only you and the person you're communicating with can read or listen to them, and nobody in between, not even NextTalk.
                   </p>
@@ -540,7 +612,7 @@ export default function Home() {
           </div>
           
           <motion.div
-            className="relative rounded-2xl overflow-hidden backdrop-blur-lg border border-white/20 shadow-xl p-6"
+            className="relative rounded-2xl overflow-hidden backdrop-blur-lg border border-white/20 shadow-xl p-6 sm:p-8"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -569,7 +641,7 @@ export default function Home() {
         </section>
         
         {/* Download Section */}
-        <section id="download" className="py-16 border-t border-white/10">
+        <section id="download" className="py-8 sm:py-16 border-t border-white/10 px-4 sm:px-0">
           <motion.h2 
             className="text-3xl font-bold text-center mb-6"
             initial={{ opacity: 0, y: 20 }}
@@ -675,62 +747,68 @@ export default function Home() {
             </motion.div>
           </div>
           
-          <motion.div
-            className="relative rounded-2xl overflow-hidden backdrop-blur-lg border border-white/20 shadow-xl p-8 bg-gradient-to-r from-indigo-900/30 to-purple-900/30"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            viewport={{ once: true }}
-          >
-            {/* 3D floating devices visualization */}
-            <div className="hidden md:block absolute right-8 top-1/2 transform -translate-y-1/2 w-64 h-64">
-              <div className="relative w-full h-full">
-                <motion.div 
-                  className="absolute top-0 left-0 w-40 h-64 rounded-2xl bg-black/80 border-4 border-white/20 shadow-xl"
-                  style={{ 
-                    transformStyle: 'preserve-3d',
-                    transform: 'rotateY(-15deg) rotateX(5deg) translateZ(20px)'
-                  }}
-                  animate={{ 
-                    rotateY: [-15, -10, -15],
-                    translateY: [0, -10, 0] 
-                  }}
-                  transition={{ 
-                    duration: 4,
-                    repeat: Infinity,
-                    repeatType: 'reverse',
-                    ease: 'easeInOut'
-                  }}
-                >
-                  <div className="absolute inset-2 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-xl overflow-hidden flex items-center justify-center">
-                    <div className="text-2xl">📱</div>
+          {/* Make 3D devices visible on mobile */}
+          <div className="relative rounded-2xl overflow-hidden backdrop-blur-lg border border-white/20 shadow-xl p-6 sm:p-8">
+            {/* 3D Devices Container - Increased height and better spacing */}
+            <div className="block relative w-full h-[400px] sm:h-[500px] mb-12 sm:mb-8 perspective-1000"
+                 style={{ transformStyle: 'preserve-3d' }}>
+              <motion.div 
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-56 h-[350px] sm:w-64 sm:h-96"
+                style={{ 
+                  transformStyle: 'preserve-3d',
+                  zIndex: 10 
+                }}
+                initial={{ rotateY: -15, rotateX: 5 }}
+                animate={{ 
+                  rotateY: [-15, -10, -15],
+                  translateY: [0, -10, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  repeatType: 'reverse',
+                  ease: 'easeInOut'
+                }}
+              >
+                <div className="absolute inset-0 bg-black/80 border-4 border-white/20 rounded-2xl shadow-xl overflow-hidden">
+                  <div className="absolute inset-2 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-xl">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-5xl sm:text-4xl">📱</span>
+                    </div>
                   </div>
-                </motion.div>
-                <motion.div 
-                  className="absolute bottom-0 right-0 w-48 h-36 rounded-2xl bg-black/80 border-4 border-white/20 shadow-xl"
-                  style={{ 
-                    transformStyle: 'preserve-3d',
-                    transform: 'rotateY(15deg) rotateX(-5deg) translateZ(40px)'
-                  }}
-                  animate={{ 
-                    rotateY: [15, 10, 15],
-                    translateY: [0, 10, 0] 
-                  }}
-                  transition={{ 
-                    duration: 5,
-                    repeat: Infinity,
-                    repeatType: 'reverse',
-                    ease: 'easeInOut'
-                  }}
-                >
-                  <div className="absolute inset-2 bg-gradient-to-br from-cyan-500/20 via-blue-500/20 to-indigo-500/20 rounded-xl overflow-hidden flex items-center justify-center">
-                    <div className="text-2xl">💻</div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/4 translate-y-[25%] w-48 h-36 sm:w-48 sm:h-36"
+                style={{ 
+                  transformStyle: 'preserve-3d',
+                  zIndex: 20 
+                }}
+                initial={{ rotateY: 15, rotateX: -5 }}
+                animate={{
+                  rotateY: [15, 10, 15],
+                  translateY: [0, 10, 0],
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  repeatType: 'reverse',
+                  ease: 'easeInOut'
+                }}
+              >
+                <div className="absolute inset-0 bg-black/80 border-4 border-white/20 rounded-2xl shadow-xl overflow-hidden">
+                  <div className="absolute inset-2 bg-gradient-to-br from-cyan-500/20 via-blue-500/20 to-indigo-500/20 rounded-xl">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-5xl sm:text-4xl">💻</span>
+                    </div>
                   </div>
-                </motion.div>
-              </div>
+                </div>
+              </motion.div>
             </div>
-            
-            <div className="md:max-w-lg">
+
+            {/* Content - Added top margin for mobile */}
+            <div className="relative z-10 mt-4 sm:mt-0">
               <h3 className="text-2xl font-bold mb-4">
                 <span className="bg-gradient-to-r from-cyan-300 to-purple-400 bg-clip-text text-transparent">Sync across all your devices</span>
               </h3>
@@ -760,11 +838,11 @@ export default function Home() {
                 <span className="ml-2 relative">→</span>
               </Link>
             </div>
-          </motion.div>
+          </div>
         </section>
         
         {/* Testimonials Section */}
-        <section className="py-16 border-t border-white/10">
+        <section className="py-8 sm:py-16 border-t border-white/10 px-4 sm:px-0">
           <motion.h2 
             className="text-3xl font-bold text-center mb-6"
             initial={{ opacity: 0, y: 20 }}
@@ -786,7 +864,8 @@ export default function Home() {
             Millions of people around the world are already using NextTalk to stay connected.
           </motion.p>
           
-          <div className="grid md:grid-cols-3 gap-6">
+          {/* Update testimonials grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {[
               {
                 name: "Sarah J.",
@@ -839,7 +918,7 @@ export default function Home() {
         </section>
         
         {/* FAQ Section */}
-        <section id="faq" className="py-16 border-t border-white/10">
+        <section id="faq" className="py-8 sm:py-16 border-t border-white/10 px-4 sm:px-0">
           <motion.h2 
             className="text-3xl font-bold text-center mb-6"
             initial={{ opacity: 0, y: 20 }}
@@ -919,7 +998,7 @@ export default function Home() {
         </section>
         
         {/* CTA Section */}
-        <section className="py-16 border-t border-white/10">
+        <section className="py-8 sm:py-16 border-t border-white/10 px-4 sm:px-0">
           <div className="relative rounded-2xl overflow-hidden p-8 lg:p-12">
             {/* Background gradient and effects */}
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 via-purple-600/30 to-pink-600/30"></div>
@@ -974,8 +1053,9 @@ export default function Home() {
       
       {/* Footer */}
       <footer className="backdrop-blur-lg border-t border-white/10 bg-black/10">
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div className="container mx-auto px-4 py-8 sm:py-12">
+          {/* Update footer grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 mb-8 sm:mb-12">
             <div>
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm text-gray-400">
@@ -1049,6 +1129,22 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      <style jsx global>{`
+        .perspective-1000 {
+          perspective: 1000px;
+          -webkit-perspective: 1000px;
+        }
+
+        @supports (-webkit-transform-style: preserve-3d) or (transform-style: preserve-3d) {
+          .transform-gpu {
+            transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+          }
+        }
+      `}</style>
     </div>
   );
 };
