@@ -13,9 +13,8 @@ const transporter = nodemailer.createTransport({
   },
   service: 'gmail',
   tls: {
-    rejectUnauthorized: false,
-    ciphers: 'SSLv3',
-    secureProtocol: 'TLSv1_method'
+    minVersion: 'TLSv1.2',
+    rejectUnauthorized: false
   },
   headers: {
     'X-Priority': '1',
