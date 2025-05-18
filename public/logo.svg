@@ -1,0 +1,18 @@
+<!-- filepath: c:\Users\Admin\OneDrive\Desktop\NexusChat\New folder\nextalk\public\logo.svg -->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 100 100"
+  fill="none"
+>
+  <circle cx="50" cy="50" r="48" fill="url(#gradient)" stroke="white" stroke-width="4" />
+  <path
+    d="M35 40h30a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H50l-10 10v-10H35a5 5 0 0 1-5-5V45a5 5 0 0 1 5-5z"
+    fill="white"
+  />
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06b6d4" />
+      <stop offset="1" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+</svg>
