@@ -155,7 +155,7 @@ export default function ChatListPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden">
       {/* Background glowing elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
@@ -259,8 +259,8 @@ export default function ChatListPage() {
         </div>
       </div>
 
-      <div className="px-4 py-3 bg-black/20 backdrop-blur-sm">
-        <div className="relative">
+      <div className="px-3 sm:px-4 py-3 bg-black/20 backdrop-blur-sm">
+        <div className="relative max-w-lg mx-auto">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search size={18} className="text-gray-400" />
           </div>
@@ -392,7 +392,7 @@ export default function ChatListPage() {
 
       {/* Floating Action Button for new chat */}
       <motion.div 
-        className="absolute bottom-6 right-6 z-20"
+        className="fixed bottom-6 right-4 sm:right-6 z-20"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, delay: 0.5 }}

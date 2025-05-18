@@ -9,7 +9,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, Search, Settings, ChevronDown, 
-  LogOut, User, Shield 
+  LogOut, User, Shield, Menu, X 
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -21,6 +21,8 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -135,8 +137,78 @@ export default function Navbar() {
     }
   }, [session]);
   
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <nav className="sticky top-0 z-20 px-4 py-2 bg-black/30 backdrop-blur-md border-b border-white/10">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${scrolled ? 'bg-black/50 backdrop-blur-lg' : 'bg-transparent'}`}>
+      <div className="flex items-center justify-between px-4 sm:px-6 h-16 border-b border-white/10">
+        {/* Logo */}
+        <div className="flex items-center">
+          <Image
+            src="/logo.png"
+            alt="NexTalk"
+            width={32}
+            height={32}
+            className="mr-2"
+          />
+          <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 text-transparent bg-clip-text hidden sm:block">
+            NexTalk
+          </span>
+        </div>
+
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="p-2 rounded-lg hover:bg-white/10 sm:hidden"
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+
+        {/* User menu */}
+        <div className="hidden sm:flex items-center space-x-4">
+          {session?.user && (
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20">
+                {session.user.image ? (
+                  <Image
+                    src={session.user.image}
+                    alt={session.user.name || ''}
+                    width={32}
+                    height={32}
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-purple-600 to-cyan-600 flex items-center justify-center text-white text-sm font-medium">
+                    {session.user.name?.[0] || '?'}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      {isMenuOpen && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="sm:hidden bg-black/90 backdrop-blur-lg border-b border-white/10"
+        >
+          <div className="px-4 py-3">
+            {/* Mobile menu content */}
+          </div>
+        </motion.div>
+      )}
+
       <div className="flex items-center justify-between h-14">
         {/* Page Title */}
         <div className="flex items-center">

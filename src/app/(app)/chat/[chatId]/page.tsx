@@ -328,9 +328,9 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
-      {/* Chat Header - Fixed below navbar */}
-      <div className="sticky top-[60px] z-20 flex items-center p-4 border-b border-white/10 bg-black/20 backdrop-blur-md">
+    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+      {/* Header */}
+      <div className="sticky top-0 z-20 flex items-center p-3 sm:p-4 border-b border-white/10 bg-black/20 backdrop-blur-md">
         <button
           onClick={() => router.back()}
           className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
@@ -435,8 +435,8 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages Container - Adjust padding for mobile */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
         <div className="flex flex-col min-h-0">
           {Array.isArray(messages) && messages.map((msg, index) => {
             const isMine = msg.senderId === session?.user?.id;
@@ -626,8 +626,8 @@ export default function ChatPage() {
         )}
       </AnimatePresence>
 
-      {/* Message Input - Fixed at bottom */}
-      <div className="sticky bottom-0 z-20 p-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
+      {/* Input - Adjust padding and spacing for mobile */}
+      <div className="sticky bottom-0 z-20 p-3 sm:p-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
         <form
           onSubmit={(e) => {
             e.preventDefault();

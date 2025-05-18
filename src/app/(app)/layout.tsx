@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { SessionProvider } from 'next-auth/react';
 import { SocketProvider } from '@/hooks/useSocket';
@@ -14,6 +15,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   const pathname = usePathname();
+  const { status } = useSession();
   const [isMobile, setIsMobile] = useState(false);
   
   useEffect(() => {
@@ -29,8 +31,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
     };
   }, []);
 
-  // Don't show sidebar on auth pages
-  const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password';
+  // Don't show layout on auth pages
+  if (pathname.startsWith('/auth')) {
+    return <>{children}</>;
+  }
 
   return (
     <html lang="en">
@@ -56,12 +60,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
                 </div>
                 
-                {!isAuthPage && !isMobile && <Sidebar />}
-                
-                <main className={`flex-1 flex flex-col h-screen overflow-hidden ${!isAuthPage && !isMobile ? 'ml-0' : ''}`}>
-                  {!isAuthPage && <Navbar />}
-                  {children}
-                </main>
+                <div className="min-h-[100dvh] flex flex-col">
+                  <Navbar />
+                  <div className="flex-1 flex pt-16">
+                    <Sidebar />
+                    <main className={`flex-1 sm:ml-16 flex flex-col h-screen overflow-hidden ${!isMobile ? 'ml-0' : ''}`}>
+                      {children}
+                    </main>
+                  </div>
+                </div>
               </div>
             </SocketProvider>
           </AuthProvider>

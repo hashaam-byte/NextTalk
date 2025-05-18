@@ -15,8 +15,8 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-4 border-t-purple-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center min-h-[100dvh]">
+        {/* Use dvh for better mobile viewport handling */}
       </div>
     }>
       <LoginContent />

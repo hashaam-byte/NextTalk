@@ -112,18 +112,9 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden">
-      {/* Background glowing elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-indigo-600/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute bottom-1/3 -right-20 w-80 h-80 bg-purple-600/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute top-3/4 left-1/3 w-40 h-40 bg-cyan-600/20 rounded-full filter blur-3xl"></div>
-        
-        {/* Animated grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
-      </div>
-
-      <div className="relative z-10 flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
+    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden">
+      {/* Header with mobile padding */}
+      <div className="sticky top-0 z-20 flex items-center justify-between p-3 sm:p-4 border-b border-white/10 bg-black/20 backdrop-blur-md">
         <div className="flex items-center menu-container relative">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 text-transparent bg-clip-text">
             Groups
@@ -142,7 +133,8 @@ export default function GroupsPage() {
         </div>
       </div>
 
-      <div className="px-4 py-3 bg-black/20 backdrop-blur-sm">
+      {/* Search with mobile padding */}
+      <div className="px-3 sm:px-4 py-3 bg-black/10">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search size={18} className="text-gray-400" />
@@ -157,120 +149,123 @@ export default function GroupsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 z-10">
-        {filteredGroups.length > 0 ? (
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              {filteredGroups.map((group, index) => (
-                <motion.div
-                  key={group.id}
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ duration: 0.2, delay: index * 0.05 }}
-                  whileHover={{ 
-                    scale: 1.01, 
-                    backgroundColor: "rgba(255, 255, 255, 0.05)",
-                    boxShadow: "0 0 20px rgba(124, 58, 237, 0.1)"
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  className="relative flex items-center p-4 border-b border-white/5 cursor-pointer"
-                  onClick={() => handleGroupSelect(group.id)}
-                >
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 bg-gradient-to-br from-indigo-800/50 to-purple-900/50 p-0.5">
-                      <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
-                        {group.avatar ? (
-                          <Image
-                            src={group.avatar}
-                            alt={group.name}
-                            width={48}
-                            height={48}
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full bg-gradient-to-br from-indigo-600/30 to-purple-600/30 text-white font-medium">
-                            <Users size={24} />
-                          </div>
-                        )}
+      {/* Groups list with responsive grid */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="grid gap-2 sm:gap-3 p-3 sm:p-4">
+          {filteredGroups.length > 0 ? (
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {filteredGroups.map((group, index) => (
+                  <motion.div
+                    key={group.id}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.2, delay: index * 0.05 }}
+                    whileHover={{ 
+                      scale: 1.01, 
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      boxShadow: "0 0 20px rgba(124, 58, 237, 0.1)"
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative flex items-center p-4 border-b border-white/5 cursor-pointer"
+                    onClick={() => handleGroupSelect(group.id)}
+                  >
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 bg-gradient-to-br from-indigo-800/50 to-purple-900/50 p-0.5">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                          {group.avatar ? (
+                            <Image
+                              src={group.avatar}
+                              alt={group.name}
+                              width={48}
+                              height={48}
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full bg-gradient-to-br from-indigo-600/30 to-purple-600/30 text-white font-medium">
+                              <Users size={24} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {group.isAdmin && (
+                        <div className="absolute -bottom-1 -right-1 bg-indigo-500 rounded-full p-1 border-2 border-gray-900">
+                          <Settings size={10} className="text-white" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="ml-4 flex-1">
+                      <div className="flex justify-between items-start">
+                        <h2 className="text-lg font-medium text-white">{group.name}</h2>
+                        <span className="text-xs text-gray-400">
+                          {formatLastActivity(group.lastActivity)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <p className="text-sm text-gray-400 truncate max-w-[200px]">
+                          {group.description}
+                        </p>
+                        <div className="bg-white/10 text-gray-300 text-xs rounded-full px-2 py-0.5 flex items-center">
+                          <Users size={12} className="mr-1" />
+                          {group.memberCount}
+                        </div>
                       </div>
                     </div>
-                    {group.isAdmin && (
-                      <div className="absolute -bottom-1 -right-1 bg-indigo-500 rounded-full p-1 border-2 border-gray-900">
-                        <Settings size={10} className="text-white" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="ml-4 flex-1">
-                    <div className="flex justify-between items-start">
-                      <h2 className="text-lg font-medium text-white">{group.name}</h2>
-                      <span className="text-xs text-gray-400">
-                        {formatLastActivity(group.lastActivity)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <p className="text-sm text-gray-400 truncate max-w-[200px]">
-                        {group.description}
-                      </p>
-                      <div className="bg-white/10 text-gray-300 text-xs rounded-full px-2 py-0.5 flex items-center">
-                        <Users size={12} className="mr-1" />
-                        {group.memberCount}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </AnimatePresence>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 100 }}
-              className="rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-6 mb-6 border border-white/10"
-            >
-              <Users size={40} className="text-indigo-500" />
-            </motion.div>
-            <motion.p 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="text-xl font-medium text-white"
-            >
-              No groups found
-            </motion.p>
-            <motion.p 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-sm mt-2 mb-6 text-gray-400"
-            >
-              Create a new group or join existing ones
-            </motion.p>
-            <motion.button 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(124, 58, 237, 0.3)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleCreateGroup}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-xl flex items-center shadow-lg shadow-indigo-500/20"
-            >
-              <Plus size={18} className="mr-2" />
-              Create a new group
-            </motion.button>
-          </div>
-        )}
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 100 }}
+                className="rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-6 mb-6 border border-white/10"
+              >
+                <Users size={40} className="text-indigo-500" />
+              </motion.div>
+              <motion.p 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="text-xl font-medium text-white"
+              >
+                No groups found
+              </motion.p>
+              <motion.p 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-sm mt-2 mb-6 text-gray-400"
+              >
+                Create a new group or join existing ones
+              </motion.p>
+              <motion.button 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(124, 58, 237, 0.3)" }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCreateGroup}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-xl flex items-center shadow-lg shadow-indigo-500/20"
+              >
+                <Plus size={18} className="mr-2" />
+                Create a new group
+              </motion.button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Floating Action Button for new group */}
+      {/* FAB with mobile positioning */}
       <motion.div 
-        className="absolute bottom-6 right-6 z-20"
+        className="fixed bottom-6 right-4 sm:right-6 z-20"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
