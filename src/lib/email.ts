@@ -92,7 +92,7 @@ export const sendInviteEmail = async ({ to, senderName, inviteLink }: InvitePara
           <p>Hi there,</p>
           <p>${senderName} has invited you to join NexTalk - a modern messaging platform.</p>
           <p>Click the button below to create your account and start chatting:</p>
-          <a href="${inviteLink}" 
+          <a href="https://nexttalk-web.vercel.app" 
              style="display: inline-block; background: #6366f1; color: white; padding: 10px 20px; 
                     text-decoration: none; border-radius: 5px; margin-top: 15px;">
             Join NexTalk
