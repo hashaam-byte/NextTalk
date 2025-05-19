@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { 
   MessageSquare, Users, Video, Camera, User, 
-  Settings, LogOut, Plus, Home, Menu, ChevronRight, Bell
+  Settings, LogOut, Plus, Home, Menu, ChevronRight
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -33,9 +33,8 @@ export default function Sidebar() {
     { name: 'Home', icon: Home, path: '/home' },
     { name: 'Chats', icon: MessageSquare, path: '/chat' },
     { name: 'Groups', icon: Users, path: '/groups' },
-    { name: 'Camera', icon: Camera, path: '/camera' },
     { name: 'Videos', icon: Video, path: '/videos' },
-    { name: 'Notifications', icon: Bell, path: '/notifications' },
+    { name: 'Camera', icon: Camera, path: '/camera' },
   ];
 
   const profileItems = [
