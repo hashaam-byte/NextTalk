@@ -136,7 +136,7 @@ export default function Navbar() {
   }, [session]);
   
   return (
-    <nav className="sticky top-0 z-20 px-4 py-2 bg-black/30 backdrop-blur-md border-b border-white/10">
+    <nav className="sticky top-0 z-50 px-4 py-2 bg-black/30 backdrop-blur-md border-b border-white/10">
       <div className="flex items-center justify-between h-14">
         {/* Page Title */}
         <div className="flex items-center">
@@ -181,67 +181,79 @@ export default function Navbar() {
 
             <AnimatePresence>
               {isNotificationsOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 w-80 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50"
-                >
-                  <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                    <h3 className="font-semibold text-white">Notifications</h3>
-                    {unreadCount > 0 && (
-                      <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
-                        {unreadCount} new
-                      </span>
-                    )}
-                  </div>
+                <>
+                  {/* Backdrop overlay */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+                    onClick={() => setIsNotificationsOpen(false)}
+                  />
 
-                  <div className="max-h-[400px] overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification: any) => (
-                        <div
-                          key={notification.id}
-                          className={`p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer ${
-                            !notification.read ? 'bg-purple-500/10' : ''
-                          }`}
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className="flex-shrink-0">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center">
-                                <Bell size={14} className="text-white" />
+                  {/* Notifications dropdown */}
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    className="absolute right-0 w-80 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-[70]"
+                  >
+                    <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                      <h3 className="font-semibold text-white">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((notification: any) => (
+                          <div
+                            key={notification.id}
+                            className={`p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer ${
+                              !notification.read ? 'bg-purple-500/10' : ''
+                            }`}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center">
+                                  <Bell size={14} className="text-white" />
+                                </div>
                               </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-gray-200">{notification.content}</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {formatNotificationTime(notification.createdAt)}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-gray-200">{notification.content}</p>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {formatNotificationTime(notification.createdAt)}
-                              </p>
-                            </div>
-                            {!notification.read && (
-                              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                            )}
                           </div>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-gray-400">
+                          No notifications
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-gray-400">
-                        No notifications
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  <div className="p-3 border-t border-white/10">
-                    <button
-                      onClick={() => {
-                        router.push('/notifications');
-                        setIsNotificationsOpen(false);
-                      }}
-                      className="w-full text-center text-sm text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      View all notifications
-                    </button>
-                  </div>
-                </motion.div>
+                    <div className="p-3 border-t border-white/10">
+                      <button
+                        onClick={() => {
+                          router.push('/notifications');
+                          setIsNotificationsOpen(false);
+                        }}
+                        className="w-full text-center text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                      >
+                        View all notifications
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </div>
@@ -280,81 +292,93 @@ export default function Navbar() {
 
             <AnimatePresence>
               {isProfileOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 w-64 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50"
-                  style={{ boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.1), 0 8px 10px -6px rgba(124, 58, 237, 0.1)' }}
-                >
-                  <div className="p-4 border-b border-white/10">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-cyan-400 p-0.5">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
-                          {session?.user?.image ? (
-                            <Image
-                              src={session.user.image}
-                              alt={session.user.name || 'User'}
-                              width={40}
-                              height={40}
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                              {session?.user?.name?.[0].toUpperCase() || 'U'}
-                            </div>
-                          )}
+                <>
+                  {/* Backdrop overlay */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+                    onClick={() => setIsProfileOpen(false)}
+                  />
+
+                  {/* Profile dropdown */}
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    className="absolute right-0 w-64 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-[70]"
+                    style={{ boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.1), 0 8px 10px -6px rgba(124, 58, 237, 0.1)' }}
+                  >
+                    <div className="p-4 border-b border-white/10">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-cyan-400 p-0.5">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                            {session?.user?.image ? (
+                              <Image
+                                src={session.user.image}
+                                alt={session.user.name || 'User'}
+                                width={40}
+                                height={40}
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                                {session?.user?.name?.[0].toUpperCase() || 'U'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ml-3">
+                          <p className="font-medium text-white">{session?.user?.name || 'User'}</p>
+                          <p className="text-xs text-gray-400">{session?.user?.email || 'user@example.com'}</p>
                         </div>
                       </div>
-                      <div className="ml-3">
-                        <p className="font-medium text-white">{session?.user?.name || 'User'}</p>
-                        <p className="text-xs text-gray-400">{session?.user?.email || 'user@example.com'}</p>
-                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-1">
-                    <Link href="/profile">
-                      <motion.div
-                        whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                    <div className="p-1">
+                      <Link href="/profile">
+                        <motion.div
+                          whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                          whileTap={{ scale: 0.98 }}
+                          className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                        >
+                          <User size={18} className="mr-2 text-purple-400" />
+                          My Profile
+                        </motion.div>
+                      </Link>
+                      <Link href="/settings">
+                        <motion.div
+                          whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                          whileTap={{ scale: 0.98 }}
+                          className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                        >
+                          <Settings size={18} className="mr-2 text-cyan-400" />
+                          Settings
+                        </motion.div>
+                      </Link>
+                      <Link href="/privacy">
+                        <motion.div
+                          whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                          whileTap={{ scale: 0.98 }}
+                          className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                        >
+                          <Shield size={18} className="mr-2 text-green-400" />
+                          Privacy
+                        </motion.div>
+                      </Link>
+                      <motion.button
+                        whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 0, 0, 0.1)" }}
                         whileTap={{ scale: 0.98 }}
-                        className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                        onClick={handleSignOut}
+                        className="flex items-center w-full p-2 text-red-400 rounded-lg transition-colors"
                       >
-                        <User size={18} className="mr-2 text-purple-400" />
-                        My Profile
-                      </motion.div>
-                    </Link>
-                    <Link href="/settings">
-                      <motion.div
-                        whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
-                      >
-                        <Settings size={18} className="mr-2 text-cyan-400" />
-                        Settings
-                      </motion.div>
-                    </Link>
-                    <Link href="/privacy">
-                      <motion.div
-                        whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
-                      >
-                        <Shield size={18} className="mr-2 text-green-400" />
-                        Privacy
-                      </motion.div>
-                    </Link>
-                    <motion.button
-                      whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 0, 0, 0.1)" }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleSignOut}
-                      className="flex items-center w-full p-2 text-red-400 rounded-lg transition-colors"
-                    >
-                      <LogOut size={18} className="mr-2" />
-                      Sign Out
-                    </motion.button>
-                  </div>
-                </motion.div>
+                        <LogOut size={18} className="mr-2" />
+                        Sign Out
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </div>

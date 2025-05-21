@@ -156,7 +156,7 @@ export default function ChatListPage() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden">
-      {/* Background glowing elements */}
+      {/* Background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
         <div className="absolute bottom-1/3 -right-20 w-80 h-80 bg-cyan-600/20 rounded-full filter blur-3xl"></div>
@@ -166,97 +166,123 @@ export default function ChatListPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
       </div>
 
-      <div className="relative z-10 flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
-        <div className="flex items-center menu-container relative">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text">
-            Chats
-          </h1>
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="ml-2 p-1.5 rounded-full hover:bg-white/10 transition-all text-gray-400"
-          >
-            <ChevronDown size={18} className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
-          </button>
+      {/* Header with dropdown */}
+      <div className="relative z-30">
+        <div className="relative z-10 flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
+          <div className="flex items-center menu-container relative">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text">
+              Chats
+            </h1>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="ml-2 p-1.5 rounded-full hover:bg-white/10 transition-all text-gray-400"
+            >
+              <ChevronDown size={18} className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
 
-          <AnimatePresence>
-            {isMenuOpen && (
+          <div className="flex space-x-2">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="p-2 rounded-full bg-white/5 backdrop-blur-md hover:bg-white/10 transition-all text-gray-200 border border-white/10"
+              onClick={handleSettings}
+            >
+              <Settings size={20} />
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Dropdown Menu with Backdrop */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+                onClick={() => setIsMenuOpen(false)}
+              />
+
+              {/* Dropdown Menu */}
               <motion.div
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="absolute top-14 left-0 w-64 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50"
-                style={{ boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.1), 0 8px 10px -6px rgba(124, 58, 237, 0.1)' }}
+                className="absolute top-14 left-4 w-64 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50"
               >
-                <div className="p-3 border-b border-white/10">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-cyan-400 p-0.5">
-                      <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
-                        {session?.user?.image ? (
-                          <Image
-                            src={session.user.image}
-                            alt={session.user.name || 'User'}
-                            width={40}
-                            height={40}
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                            {session?.user?.name?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                        )}
+                <div className="p-4 border-b border-white/10">
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-full blur"></div>
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-cyan-400 p-0.5 relative">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                          {session?.user?.image ? (
+                            <Image
+                              src={session.user.image}
+                              alt={session.user.name || 'User'}
+                              width={40}
+                              height={40}
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                              {session?.user?.name?.[0].toUpperCase() || '?'}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="ml-3">
-                      <p className="font-medium text-white">{session?.user?.name || 'User'}</p>
-                      <p className="text-xs text-gray-400">{session?.user?.email}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {session?.user?.name || 'User'}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {session?.user?.email}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-1">
+                <div className="p-2">
                   <motion.button
                     whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleCreateGroup}
-                    className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                    className="flex items-center w-full p-2.5 rounded-lg transition-all text-gray-200 hover:bg-white/5"
                   >
-                    <Users size={18} className="mr-2 text-purple-400" />
-                    Create Group
+                    <Users size={18} className="mr-3 text-purple-400" />
+                    <span className="text-sm">Create Group</span>
                   </motion.button>
+                  
                   <motion.button
                     whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleSettings}
-                    className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                    className="flex items-center w-full p-2.5 rounded-lg transition-all text-gray-200 hover:bg-white/5"
                   >
-                    <Settings size={18} className="mr-2 text-cyan-400" />
-                    Settings
+                    <Settings size={18} className="mr-3 text-cyan-400" />
+                    <span className="text-sm">Settings</span>
                   </motion.button>
+
+                  <div className="my-2 border-t border-white/10"></div>
+                  
                   <motion.button
                     whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 0, 0, 0.1)" }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => router.push('/api/auth/signout')}
-                    className="flex items-center w-full p-2 text-red-400 rounded-lg transition-colors"
+                    className="flex items-center w-full p-2.5 text-red-400 rounded-lg transition-all hover:bg-red-950/20"
                   >
-                    <LogOut size={18} className="mr-2" />
-                    Sign Out
+                    <LogOut size={18} className="mr-3" />
+                    <span className="text-sm">Sign Out</span>
                   </motion.button>
                 </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="flex space-x-2">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="p-2 rounded-full bg-white/5 backdrop-blur-md hover:bg-white/10 transition-all text-gray-200 border border-white/10"
-            onClick={handleSettings}
-          >
-            <Settings size={20} />
-          </motion.button>
-        </div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="px-3 sm:px-4 py-3 bg-black/20 backdrop-blur-sm">
