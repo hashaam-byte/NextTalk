@@ -50,7 +50,7 @@ export async function POST(req: Request, { params }: { params: { groupId: string
     const { groupId } = params;
     const { content } = await req.json();
 
-    // Get group info and members
+    // First, get group info and members
     const group = await prisma.group.findUnique({
       where: { id: groupId },
       include: {
@@ -79,44 +79,33 @@ export async function POST(req: Request, { params }: { params: { groupId: string
     });
 
     // Create notifications for all group members except the sender
-    const notificationPromises = group.members
-      .filter(member => member.userId !== session.user.id)
-      .map(member => 
-        prisma.notification.create({
-          data: {
-            userId: member.userId,
-            type: 'GROUP_MESSAGE',
-            content: `${session.user.name} sent a message in ${group.name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
-            senderId: session.user.id,
-            groupId: group.id,
-            read: false
-          }
-        })
-      );
-
-    await Promise.all(notificationPromises);
-
-    // Emit socket event for real-time updates
-    // This assumes you have socket.io set up
-    if (global.io) {
-      group.members.forEach(member => {
-        if (member.userId !== session.user.id) {
-          global.io.to(`user_${member.userId}`).emit('notification', {
-            type: 'GROUP_MESSAGE',
-            groupId: group.id,
-            message: {
-              sender: session.user.name,
-              content: content.substring(0, 50),
-              groupName: group.name
+    const notifications = await Promise.all(
+      group.members
+        .filter(member => member.userId !== session.user.id)
+        .map(member => 
+          prisma.notification.create({
+            data: {
+              type: 'GROUP_MESSAGE',
+              content: `${session.user.name} sent a message in ${group.name}`,
+              userId: member.userId,
+              senderId: session.user.id,
+              fromUserId: session.user.id,
+              groupId: group.id,
+              read: false
             }
-          });
-        }
-      });
-    }
+          })
+        )
+    );
 
-    return NextResponse.json({ message, notifications: 'sent' });
+    return NextResponse.json({ 
+      message,
+      notifications: notifications.length 
+    });
   } catch (error) {
     console.error('Error sending group message:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to send message' }, 
+      { status: 500 }
+    );
   }
 }

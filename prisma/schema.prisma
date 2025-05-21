@@ -27,6 +27,7 @@ model User {
   participants          Participant[]
   receivedNotifications Notification[]   @relation("UserNotifications")
   sentNotifications     Notification[]   @relation("SentNotifications")
+  fromNotifications     Notification[]   @relation("FromUserNotifications")  // Add this line
   contacts              User[]           @relation("UserContacts")
   contactOf             User[]           @relation("UserContacts")
   sentRequests          ContactRequest[] @relation("SentRequests")
@@ -86,20 +87,24 @@ model Participant {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  type      String // 'GROUP_MESSAGE', 'DIRECT_MESSAGE', etc.
-  content   String
-  userId    String
-  senderId  String
-  groupId   String?
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  sender    User     @relation("SentNotifications", fields: [senderId], references: [id], onDelete: Cascade)
-  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  type       String   // 'GROUP_MESSAGE', 'DIRECT_MESSAGE', etc.
+  content    String
+  userId     String
+  senderId   String
+  fromUserId String?
+  groupId    String?
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user     User    @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sender   User    @relation("SentNotifications", fields: [senderId], references: [id], onDelete: Cascade)
+  fromUser User?   @relation("FromUserNotifications", fields: [fromUserId], references: [id], onDelete: Cascade)
+  group    Group?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([senderId])
+  @@index([fromUserId])
   @@index([groupId])
 }
 
