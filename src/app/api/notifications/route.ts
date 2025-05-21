@@ -1,37 +1,41 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/lib/authConfig';
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ notifications: [], error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ notifications: [], error: "User not found" }, { status: 404 });
     }
 
     const notifications = await prisma.notification.findMany({
-      where: {
-        userId: session.user.id
-      },
+      where: { userId: user.id },
       include: {
-        sender: {
+        fromUser: {
           select: {
             name: true,
-            image: true
+            profileImage: true,
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 50
+      orderBy: { createdAt: 'desc' }
     });
 
     return NextResponse.json({ notifications });
   } catch (error) {
-    console.error('Error fetching notifications:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('[NOTIFICATIONS_GET]', error);
+    return NextResponse.json({ notifications: [], error: "Internal server error" }, { status: 500 });
   }
 }
 
