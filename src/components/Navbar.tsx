@@ -4,26 +4,58 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, Search, Settings, ChevronDown, 
-  LogOut, User, Users, MessageSquare, Shield 
+  LogOut, User, Shield 
 } from 'lucide-react';
 
 export default function Navbar() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/login' });
+  };
+
+  const handleNotificationsClick = async () => {
+    setIsNotificationsOpen(!isNotificationsOpen);
+    if (!isNotificationsOpen && unreadCount > 0) {
+      try {
+        // Mark all notifications as read
+        await fetch('/api/notifications/mark-all-read', {
+          method: 'POST'
+        });
+        setUnreadCount(0);
+      } catch (error) {
+        console.error('Error marking notifications as read:', error);
+      }
+    }
+  };
+
+  const formatNotificationTime = (date: string | Date) => {
+    const messageDate = new Date(date);
+    const now = new Date();
+    const diff = now.getTime() - messageDate.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return messageDate.toLocaleDateString();
   };
 
   // Get page title from pathname
@@ -63,33 +95,48 @@ export default function Navbar() {
     };
   }, []);
 
-  // Mock notifications
-  const notifications = [
-    {
-      id: '1',
-      content: 'Alex sent you a message',
-      time: '2 min ago',
-      read: false,
-      type: 'message'
-    },
-    {
-      id: '2',
-      content: 'Team meeting at 4:00 PM',
-      time: '1 hour ago',
-      read: true,
-      type: 'reminder'
-    },
-    {
-      id: '3',
-      content: 'Sarah mentioned you in a group',
-      time: 'Yesterday',
-      read: true,
-      type: 'mention'
+  // Fetch unread notifications count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch('/api/notifications/unread-count');
+        const data = await response.json();
+        setUnreadCount(data.count);
+      } catch (error) {
+        console.error('Error fetching unread count:', error);
+      }
+    };
+
+    if (session?.user) {
+      fetchUnreadCount();
+      // Poll for new notifications every minute
+      const interval = setInterval(fetchUnreadCount, 60000);
+      return () => clearInterval(interval);
     }
-  ];
+  }, [session]);
+
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await fetch('/api/notifications');
+        const data = await response.json();
+        setNotifications(data.notifications);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        setNotifications([]);
+      }
+    };
+
+    if (session?.user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [session]);
   
   return (
-    <div className="sticky top-0 z-20 px-4 py-2 bg-black/30 backdrop-blur-md border-b border-white/10">
+    <nav className="sticky top-0 z-20 px-4 py-2 bg-black/30 backdrop-blur-md border-b border-white/10">
       <div className="flex items-center justify-between h-14">
         {/* Page Title */}
         <div className="flex items-center">
@@ -122,12 +169,14 @@ export default function Navbar() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               className="relative p-2 rounded-full bg-white/5 hover:bg-white/10 transition-all text-gray-200 border border-white/10"
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              onClick={handleNotificationsClick}
             >
               <Bell size={20} />
-              <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-purple-600 rounded-full">
-                2
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-purple-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
             </motion.button>
 
             <AnimatePresence>
@@ -136,54 +185,59 @@ export default function Navbar() {
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 w-80 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden"
-                  style={{ boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.1), 0 8px 10px -6px rgba(124, 58, 237, 0.1)' }}
+                  className="absolute right-0 w-80 mt-2 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50"
                 >
-                  <div className="flex items-center justify-between p-4 border-b border-white/10">
+                  <div className="p-4 border-b border-white/10 flex items-center justify-between">
                     <h3 className="font-semibold text-white">Notifications</h3>
-                    <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
-                      {notifications.filter(n => !n.read).length} new
-                    </span>
+                    {unreadCount > 0 && (
+                      <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full">
+                        {unreadCount} new
+                      </span>
+                    )}
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <div 
-                        key={notification.id}
-                        className={`p-3 border-b border-white/5 ${notification.read ? '' : 'bg-purple-500/10'}`}
-                      >
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0 mt-1">
-                            {notification.type === 'message' && (
-                              <div className="p-2 bg-cyan-500/20 rounded-full">
-                                <MessageSquare size={16} className="text-cyan-400" />
+                  <div className="max-h-[400px] overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      notifications.map((notification: any) => (
+                        <div
+                          key={notification.id}
+                          className={`p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer ${
+                            !notification.read ? 'bg-purple-500/10' : ''
+                          }`}
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className="flex-shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center">
+                                <Bell size={14} className="text-white" />
                               </div>
-                            )}
-                            {notification.type === 'reminder' && (
-                              <div className="p-2 bg-purple-500/20 rounded-full">
-                                <Bell size={16} className="text-purple-400" />
-                              </div>
-                            )}
-                            {notification.type === 'mention' && (
-                              <div className="p-2 bg-indigo-500/20 rounded-full">
-                                <Users size={16} className="text-indigo-400" />
-                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-200">{notification.content}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {formatNotificationTime(notification.createdAt)}
+                              </p>
+                            </div>
+                            {!notification.read && (
+                              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
                             )}
                           </div>
-                          <div className="ml-3 flex-1">
-                            <p className="text-sm text-gray-200">{notification.content}</p>
-                            <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
-                          </div>
-                          {!notification.read && (
-                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                          )}
                         </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-gray-400">
+                        No notifications
                       </div>
-                    ))}
+                    )}
                   </div>
-                  
-                  <div className="p-3 bg-black/20">
-                    <button className="w-full py-2 text-center text-sm text-purple-400 hover:text-purple-300 transition-colors">
+
+                  <div className="p-3 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        router.push('/notifications');
+                        setIsNotificationsOpen(false);
+                      }}
+                      className="w-full text-center text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                    >
                       View all notifications
                     </button>
                   </div>
@@ -306,6 +360,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-    </div>
+    </nav>
   );
 }
