@@ -94,6 +94,40 @@ export default function HomePage() {
     }
   };
 
+  const formatActivityTime = (timestamp: Date | string) => {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      const minutes = Math.floor(diff / 60000);
+
+      if (minutes < 60) {
+        return `${minutes}m ago`;
+      }
+      
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) {
+        return `${hours}h ago`;
+      }
+      
+      const days = Math.floor(hours / 24);
+      if (days < 7) {
+        return `${days}d ago`;
+      }
+      
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting activity time:', error);
+      return '';
+    }
+  };
+
   const getIconForActivity = (type: string) => {
     switch (type) {
       case 'message': return <MessageSquare className="text-cyan-400" size={16} />;
@@ -189,7 +223,7 @@ export default function HomePage() {
                   <span className="font-medium">{activity.content}</span>
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {formatTimestamp(activity.timestamp)}
+                  {formatActivityTime(activity.timestamp)}
                 </p>
               </div>
               {activity.type === 'message' && (
@@ -213,9 +247,25 @@ export default function HomePage() {
   const StatsCards = () => (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {[
-        { title: "Messages", value: dashboardData.stats.messages, icon: MessageSquare, color: "from-cyan-500 to-blue-500" },
-        { title: "Friends", value: dashboardData.stats.contacts, icon: Users, color: "from-purple-500 to-indigo-500" },
-        { title: "Groups", value: dashboardData.stats.groups, icon: Users, color: "from-emerald-500 to-green-500" }
+        { 
+          title: "Messages", 
+          value: dashboardData.stats.messages, 
+          icon: MessageSquare, 
+          color: "from-cyan-500 to-blue-500" 
+        },
+        { 
+          title: "Friends", 
+          value: dashboardData.stats.contacts, 
+          icon: Users, 
+          color: "from-purple-500 to-indigo-500" 
+        },
+        { 
+          title: "Groups", 
+          value: dashboardData.stats.groups,
+          icon: Users, 
+          color: "from-emerald-500 to-green-500",
+          tooltip: "Groups you're a member of"
+        }
       ].map((stat, index) => (
         <motion.div
           key={index}
@@ -223,7 +273,8 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: index * 0.1 }}
           whileHover={{ scale: 1.03, y: -5 }}
-          className="bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4"
+          className="bg-black/30 backdrop-blur-sm border border-white/10 rounded-xl p-4 relative group"
+          title={stat.tooltip}
         >
           <div className="flex items-center justify-between">
             <div>

@@ -1,105 +1,77 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/authConfig";
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Fetch groups where user is either owner or member
     const groups = await prisma.group.findMany({
       where: {
-        OR: [
-          { ownerId: user.id },
-          { members: { some: { id: user.id } } }
-        ]
+        members: {
+          some: {
+            userId: session.user.id
+          }
+        }
       },
       include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            profileImage: true
-          }
-        },
         members: {
-          select: {
-            id: true,
-            name: true,
-            profileImage: true,
-            lastSeen: true
+          include: {
+            user: true
           }
         },
         messages: {
           take: 1,
-          orderBy: { createdAt: 'desc' }
+          orderBy: {
+            createdAt: 'desc'
+          }
         }
       }
     });
 
-    return NextResponse.json({
-      groups: groups.map(group => ({
-        id: group.id,
-        name: group.name,
-        description: group.description,
-        avatar: group.avatar,
-        memberCount: group.members.length,
-        lastActivity: group.messages[0]?.createdAt || group.updatedAt,
-        isAdmin: group.ownerId === user.id,
-        isPublic: group.isPublic
-      }))
-    });
+    return NextResponse.json({ groups });
   } catch (error) {
-    console.error("[GROUPS_GET]", error);
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const { name, description, isPublic } = await req.json();
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const { name, avatar, members } = await req.json();
 
     const group = await prisma.group.create({
       data: {
         name,
-        description,
-        isPublic,
-        ownerId: user.id,
+        avatar,
+        createdBy: session.user.id,
         members: {
-          connect: { id: user.id }
+          create: [
+            // Creator as admin
+            {
+              userId: session.user.id,
+              role: 'ADMIN'
+            },
+            // Other members
+            ...members.map((memberId: string) => ({
+              userId: memberId,
+              role: 'MEMBER'
+            }))
+          ]
         }
       }
     });
 
-    return NextResponse.json({ group });
+    return NextResponse.json({ groupId: group.id });
   } catch (error) {
-    console.error("[GROUPS_POST]", error);
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

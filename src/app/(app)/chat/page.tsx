@@ -146,16 +146,69 @@ export default function ChatListPage() {
   };
 
   if (status === 'loading') {
-    return <div>Loading...</div>;
+    return (
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-indigo-500 border-l-transparent animate-spin"></div>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-4 text-white text-lg"
+          >
+            Loading chats...
+          </motion.p>
+        </div>
+      </div>
+    );
   }
 
   if (!session) {
-    // Handle unauthenticated state
-    return <div>Please sign in</div>;
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="h-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900"
+      >
+        <div className="text-center p-8">
+          <motion.h2 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-2xl font-bold text-white mb-4"
+          >
+            Please Sign In
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-gray-400 mb-6"
+          >
+            You need to be logged in to view your chats
+          </motion.p>
+          <motion.button 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => router.push('/login')}
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-purple-600/20"
+          >
+            Go to Login
+          </motion.button>
+        </div>
+      </motion.div>
+    );
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden"
+    >
       {/* Background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
@@ -167,7 +220,11 @@ export default function ChatListPage() {
       </div>
 
       {/* Header with dropdown */}
-      <div className="relative z-30">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-30"
+      >
         <div className="relative z-10 flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
           <div className="flex items-center menu-container relative">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text">
@@ -283,9 +340,15 @@ export default function ChatListPage() {
             </>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
-      <div className="px-3 sm:px-4 py-3 bg-black/20 backdrop-blur-sm">
+      {/* Search bar */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="px-3 sm:px-4 py-3 bg-black/20 backdrop-blur-sm"
+      >
         <div className="relative max-w-lg mx-auto">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search size={18} className="text-gray-400" />
@@ -298,9 +361,15 @@ export default function ChatListPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-      </div>
+      </motion.div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 z-10">
+      {/* Chat list */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-800 z-10"
+      >
         {filteredChats.length > 0 ? (
           <AnimatePresence>
             <motion.div
@@ -414,14 +483,19 @@ export default function ChatListPage() {
             </motion.button>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      {/* Floating Action Button for new chat */}
+      {/* Floating Action Button */}
       <motion.div 
         className="fixed bottom-6 right-4 sm:right-6 z-20"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
+        transition={{ 
+          type: "spring",
+          stiffness: 260,
+          damping: 20,
+          delay: 0.3
+        }}
       >
         <motion.button
           whileHover={{ scale: 1.1, boxShadow: "0 0 25px rgba(124, 58, 237, 0.5)" }}
@@ -432,6 +506,6 @@ export default function ChatListPage() {
           <User size={24} />
         </motion.button>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

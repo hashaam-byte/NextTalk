@@ -8,52 +8,52 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String?
-  email         String       @unique
-  password      String
-  phone         String?
-  profileImage  String?
-  bio           String?
-  status        String       @default("offline")   // "online", "offline", "away", "busy"
-  lastSeen      DateTime?
-  lastActive    DateTime?    @default(now())       // Last activity timestamp
-  isTyping      Boolean      @default(false)       // Typing status
-  typingInChat  String?      // ChatId where user is typing
-  deviceId      String?      // For handling multiple device sessions
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  messages      Message[]    @relation("UserMessages")
-  participants  Participant[]
-  receivedNotifications Notification[] @relation("UserNotifications")
-  sentNotifications    Notification[] @relation("SentNotifications")
-  contacts      User[]       @relation("UserContacts")
-  contactOf     User[]       @relation("UserContacts")
-  sentRequests     ContactRequest[] @relation("SentRequests")
-  receivedRequests ContactRequest[] @relation("ReceivedRequests")
-  theme           String    @default("dark")
-  language        String    @default("en")
-  notifications   Boolean   @default(true)
-  soundEnabled    Boolean   @default(true)
-  privacyLevel    String    @default("friends") // "public", "friends", "private"
-  readReceipts    Boolean   @default(true)
-  groups          Group[]   @relation("GroupMembers")
-  ownedGroups     Group[]   @relation("GroupOwner")
-  groupMessages   GroupMessage[]
-  settings        UserSettings?
+  id                    String           @id @default(cuid())
+  name                  String?
+  email                 String           @unique
+  password              String
+  phone                 String?
+  profileImage          String?
+  bio                   String?
+  status                String           @default("offline") // "online", "offline", "away", "busy"
+  lastSeen              DateTime?
+  lastActive            DateTime?        @default(now()) // Last activity timestamp
+  isTyping              Boolean          @default(false) // Typing status
+  typingInChat          String? // ChatId where user is typing
+  deviceId              String? // For handling multiple device sessions
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  messages              Message[]        @relation("UserMessages")
+  participants          Participant[]
+  receivedNotifications Notification[]   @relation("UserNotifications")
+  sentNotifications     Notification[]   @relation("SentNotifications")
+  contacts              User[]           @relation("UserContacts")
+  contactOf             User[]           @relation("UserContacts")
+  sentRequests          ContactRequest[] @relation("SentRequests")
+  receivedRequests      ContactRequest[] @relation("ReceivedRequests")
+  theme                 String           @default("dark")
+  language              String           @default("en")
+  notifications         Boolean          @default(true)
+  soundEnabled          Boolean          @default(true)
+  privacyLevel          String           @default("friends") // "public", "friends", "private"
+  readReceipts          Boolean          @default(true)
+  groups                GroupMember[]
+  ownedGroups           Group[]          @relation("GroupOwner")
+  groupMessages         GroupMessage[]
+  settings              UserSettings?
 }
 
 model Chat {
-  id           String         @id @default(cuid())
+  id           String        @id @default(cuid())
   name         String?
-  isGroup      Boolean        @default(false)
+  isGroup      Boolean       @default(false)
   avatar       String?
-  lastActivity DateTime      @default(now())      // Track last chat activity
-  activeUsers  String[]      @default([])         // Array of active user IDs in chat
-  typingUsers  String[]      @default([])         // Array of currently typing user IDs
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  messages     Message[]      @relation("ChatMessages")
+  lastActivity DateTime      @default(now()) // Track last chat activity
+  activeUsers  String[]      @default([]) // Array of active user IDs in chat
+  typingUsers  String[]      @default([]) // Array of currently typing user IDs
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  messages     Message[]     @relation("ChatMessages")
   participants Participant[]
 }
 
@@ -66,7 +66,7 @@ model Message {
   chatId    String
   isRead    Boolean  @default(false)
   status    String   @default("sent") // 'sent', 'delivered', 'read'
-  timestamp DateTime @default(now())  // Add this field
+  timestamp DateTime @default(now()) // Add this field
   sender    User     @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
   chat      Chat     @relation("ChatMessages", fields: [chatId], references: [id], onDelete: Cascade)
 
@@ -75,26 +75,32 @@ model Message {
 }
 
 model Participant {
-  id        String   @id @default(cuid())
-  userId    String
-  chatId    String
-  joinedAt  DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  userId   String
+  chatId   String
+  joinedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat     Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@unique([userId, chatId])
 }
 
 model Notification {
-  id          String    @id @default(cuid())
-  userId      String
-  type        String    // CONTACT_REQUEST, MESSAGE, etc.
-  content     String
-  fromUserId  String?
-  read        Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  user        User      @relation("UserNotifications", fields: [userId], references: [id])
-  fromUser    User?     @relation("SentNotifications", fields: [fromUserId], references: [id])
+  id        String   @id @default(cuid())
+  type      String // 'GROUP_MESSAGE', 'DIRECT_MESSAGE', etc.
+  content   String
+  userId    String
+  senderId  String
+  groupId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sender    User     @relation("SentNotifications", fields: [senderId], references: [id], onDelete: Cascade)
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([senderId])
+  @@index([groupId])
 }
 
 model ContactRequest {
@@ -110,19 +116,34 @@ model ContactRequest {
 }
 
 model Group {
-  id          String         @id @default(cuid())
-  name        String
-  description String?
-  avatar      String?
-  isPublic    Boolean        @default(true)
-  ownerId     String
-  owner       User           @relation("GroupOwner", fields: [ownerId], references: [id])
-  members     User[]         @relation("GroupMembers")
-  messages    GroupMessage[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id           String         @id @default(cuid())
+  name         String
+  description  String?
+  avatar       String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  createdBy    String
+  owner        User           @relation("GroupOwner", fields: [createdBy], references: [id])
+  members      GroupMember[]
+  messages     GroupMessage[]
+  isPublic     Boolean        @default(false)
+  Notification Notification[]
 
-  @@index([ownerId])
+  @@index([createdBy])
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String   @default("MEMBER") // ADMIN, MODERATOR, MEMBER
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
 }
 
 model GroupMessage {
@@ -130,28 +151,29 @@ model GroupMessage {
   content   String
   groupId   String
   senderId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
 
   @@index([groupId])
   @@index([senderId])
 }
 
 model UserSettings {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  theme             String   @default("dark")
-  language          String   @default("en")
-  notifications     Boolean  @default(true)
-  soundEnabled      Boolean  @default(true)
-  onlineStatus      Boolean  @default(true)
-  readReceipts      Boolean  @default(true)
-  privacyLevel      String   @default("friends")
-  messageSounds     String   @default("default")
-  callRingtone      String   @default("default")
-  lastUpdated       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme         String   @default("dark")
+  language      String   @default("en")
+  notifications Boolean  @default(true)
+  soundEnabled  Boolean  @default(true)
+  onlineStatus  Boolean  @default(true)
+  readReceipts  Boolean  @default(true)
+  privacyLevel  String   @default("friends")
+  messageSounds String   @default("default")
+  callRingtone  String   @default("default")
+  lastUpdated   DateTime @updatedAt
 
   @@index([userId])
 }
