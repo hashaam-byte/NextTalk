@@ -42,18 +42,36 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const { groupId, content, type = 'GROUP_MESSAGE', timestamp } = await req.json();
 
-    // Get group members excluding sender
+    // Get group info for notification content
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      select: { name: true }
+    });
+
+    if (!group) {
+      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    }
+
+    // Get group members excluding the sender
     const groupMembers = await prisma.groupMember.findMany({
       where: {
         groupId,
         userId: {
-          not: session.user.id
+          not: currentUser.id
         }
       }
     });
@@ -64,10 +82,11 @@ export async function POST(req: Request) {
         prisma.notification.create({
           data: {
             userId: member.userId,
-            senderId: session.user.id,
+            senderId: currentUser.id,
+            fromUserId: currentUser.id,
             groupId,
             type,
-            content,
+            content: `${currentUser.name} sent a message in ${group.name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
             createdAt: new Date(timestamp),
             read: false
           }
