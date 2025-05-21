@@ -180,87 +180,69 @@ export default function ChatListPage() {
 
           <AnimatePresence>
             {isMenuOpen && (
-              <>
-                {/* Backdrop blur overlay */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-                  onClick={() => setIsMenuOpen(false)}
-                />
-
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute top-14 left-0 w-64 bg-gray-900/90 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden"
-                >
-                  <div className="p-3 border-b border-white/10">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-cyan-400 p-0.5">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
-                          {session?.user?.image ? (
-                            <Image
-                              src={session.user.image}
-                              alt={session.user.name || 'User'}
-                              width={40}
-                              height={40}
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-400">
-                              {session?.user?.name?.[0].toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
-                          {session?.user?.name || 'User'}
-                        </p>
-                        <p className="text-xs text-gray-400 truncate">
-                          {session?.user?.email || 'user@example.com'}
-                        </p>
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="absolute top-14 left-0 w-64 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 z-50"
+                style={{ boxShadow: '0 10px 25px -5px rgba(124, 58, 237, 0.1), 0 8px 10px -6px rgba(124, 58, 237, 0.1)' }}
+              >
+                <div className="p-3 border-b border-white/10">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-cyan-400 p-0.5">
+                      <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                        {session?.user?.image ? (
+                          <Image
+                            src={session.user.image}
+                            alt={session.user.name || 'User'}
+                            width={40}
+                            height={40}
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-400">
+                            {session?.user?.name?.charAt(0).toUpperCase() || '?'}
+                          </div>
+                        )}
                       </div>
                     </div>
+                    <div className="ml-3">
+                      <p className="font-medium text-white">{session?.user?.name || 'User'}</p>
+                      <p className="text-xs text-gray-400">{session?.user?.email}</p>
+                    </div>
                   </div>
+                </div>
 
-                  <div className="p-1">
-                    <motion.button
-                      whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleCreateGroup}
-                      className="flex items-center w-full p-3 rounded-lg transition-colors text-gray-200 hover:bg-white/5 group"
-                    >
-                      <Users size={18} className="mr-3 text-purple-400 group-hover:text-purple-300" />
-                      <span className="group-hover:text-white">Create Group</span>
-                    </motion.button>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleSettings}
-                      className="flex items-center w-full p-3 rounded-lg transition-colors text-gray-200 hover:bg-white/5 group"
-                    >
-                      <Settings size={18} className="mr-3 text-cyan-400 group-hover:text-cyan-300" />
-                      <span className="group-hover:text-white">Settings</span>
-                    </motion.button>
-                    
-                    <div className="my-1 border-t border-white/10"></div>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 0, 0, 0.1)" }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => router.push('/api/auth/signout')}
-                      className="flex items-center w-full p-3 text-red-400 rounded-lg transition-colors hover:bg-red-950/20 group"
-                    >
-                      <LogOut size={18} className="mr-3 group-hover:text-red-300" />
-                      <span className="group-hover:text-red-300">Sign Out</span>
-                    </motion.button>
-                  </div>
-                </motion.div>
-              </>
+                <div className="p-1">
+                  <motion.button
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleCreateGroup}
+                    className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                  >
+                    <Users size={18} className="mr-2 text-purple-400" />
+                    Create Group
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleSettings}
+                    className="flex items-center w-full p-2 rounded-lg transition-colors text-gray-200"
+                  >
+                    <Settings size={18} className="mr-2 text-cyan-400" />
+                    Settings
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 0, 0, 0.1)" }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => router.push('/api/auth/signout')}
+                    className="flex items-center w-full p-2 text-red-400 rounded-lg transition-colors"
+                  >
+                    <LogOut size={18} className="mr-2" />
+                    Sign Out
+                  </motion.button>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
