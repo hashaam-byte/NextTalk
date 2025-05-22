@@ -17,8 +17,12 @@ export async function GET() {
           select: {
             messages: true,
             contacts: true,
-            groups: true  // Changed to count group memberships directly
+            groups: true
           }
+        },
+        messages: {
+          where: { mediaUrl: { not: null } },
+          select: { id: true }
         }
       }
     });
@@ -27,17 +31,17 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get recent activities - Updated include statement
+    // Get recent activities with safe access
     const recentActivities = await prisma.notification.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: {
-        sender: {  // Changed from fromUser to sender
+        sender: {
           select: { name: true }
         }
       }
-    });
+    }) || [];
 
     // Get online friends
     const onlineFriends = await prisma.user.findMany({
@@ -54,23 +58,24 @@ export async function GET() {
         status: true
       },
       take: 5
-    });
+    }) || [];
 
     return NextResponse.json({
       stats: {
-        messages: user._count.messages,
-        contacts: user._count.contacts,
-        groups: user._count.groups,  // Changed to use the new group count
-        mediaShared: user.messages.length
+        messages: user._count?.messages || 0,
+        contacts: user._count?.contacts || 0,
+        groups: user._count?.groups || 0,
+        mediaShared: user.messages?.length || 0
       },
       activities: recentActivities.map(activity => ({
         type: activity.type,
         content: activity.content,
         time: activity.createdAt,
-        fromUser: activity.sender?.name  // Changed from fromUser to sender
+        fromUser: activity.sender?.name
       })),
       onlineFriends
     });
+
   } catch (error) {
     console.error("[USER_STATS]", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
