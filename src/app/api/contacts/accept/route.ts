@@ -56,13 +56,14 @@ export async function POST(req: Request) {
           }
         });
 
-        // Create acceptance notification
+        // Create notification for the original sender
         await tx.notification.create({
           data: {
-            type: 'CONTACT_ACCEPTED',
-            content: `${notification.user.name} accepted your contact request`,
-            userId: notification.sender.id,
-            fromUserId: notification.userId
+            type: "CONTACT_ACCEPTED",
+            content: `${notification.user.name || 'Someone'} accepted your contact request`,
+            userId: notificationId,
+            senderId: notification.userId,  // Changed from fromUserId to senderId to match schema
+            read: false
           }
         });
       } else {
