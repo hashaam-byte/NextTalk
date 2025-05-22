@@ -14,10 +14,13 @@ export async function POST(req: Request) {
 
     // Get notification first
     const notification = await prisma.notification.findUnique({
-      where: { id: notificationId },
+      where: {
+        id: notificationId
+      },
       include: {
-        fromUser: true,
-        user: true
+        user: true,
+        sender: true,  // Use sender instead of fromUser
+        group: true
       }
     });
 
@@ -39,13 +42,13 @@ export async function POST(req: Request) {
           where: { id: notification.userId },
           data: {
             contacts: {
-              connect: { id: notification.fromUser.id }
+              connect: { id: notification.sender.id }
             }
           }
         });
 
         await tx.user.update({
-          where: { id: notification.fromUser.id },
+          where: { id: notification.sender.id },
           data: {
             contacts: {
               connect: { id: notification.userId }
@@ -58,7 +61,7 @@ export async function POST(req: Request) {
           data: {
             type: 'CONTACT_ACCEPTED',
             content: `${notification.user.name} accepted your contact request`,
-            userId: notification.fromUser.id,
+            userId: notification.sender.id,
             fromUserId: notification.userId
           }
         });
@@ -68,7 +71,7 @@ export async function POST(req: Request) {
           data: {
             type: 'CONTACT_REJECTED',
             content: `${notification.user.name} declined your contact request`,
-            userId: notification.fromUser.id,
+            userId: notification.sender.id,
             fromUserId: notification.userId
           }
         });
