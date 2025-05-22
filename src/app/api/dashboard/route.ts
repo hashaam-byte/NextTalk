@@ -45,7 +45,7 @@ export async function GET() {
       }, { status: 404 });
     }
 
-    // Calculate stats with default values
+    // Calculate stats with correct group count
     const stats = {
       messages: await prisma.message.count({
         where: { senderId: user.id }
@@ -57,12 +57,9 @@ export async function GET() {
           }
         }
       }) || 0,
-      groups: await prisma.chat.count({
+      groups: await prisma.groupMember.count({  // Changed this line
         where: {
-          isGroup: true,
-          participants: {
-            some: { userId: user.id }
-          }
+          userId: user.id
         }
       }) || 0
     };

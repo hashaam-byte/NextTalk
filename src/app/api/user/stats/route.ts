@@ -17,16 +17,8 @@ export async function GET() {
           select: {
             messages: true,
             contacts: true,
-            participants: {
-              where: {
-                chat: { isGroup: true }
-              }
-            }
+            groups: true  // Changed to count group memberships directly
           }
-        },
-        messages: {
-          where: { mediaUrl: { not: null } },
-          select: { id: true }
         }
       }
     });
@@ -68,7 +60,7 @@ export async function GET() {
       stats: {
         messages: user._count.messages,
         contacts: user._count.contacts,
-        groups: user._count.participants,
+        groups: user._count.groups,  // Changed to use the new group count
         mediaShared: user.messages.length
       },
       activities: recentActivities.map(activity => ({

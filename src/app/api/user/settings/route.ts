@@ -18,9 +18,7 @@ export async function GET() {
           select: {
             contacts: true,
             messages: true,
-            participants: {
-              where: { chat: { isGroup: true } }
-            }
+            groups: true  // Add this line to count group memberships
           }
         }
       }
@@ -63,7 +61,7 @@ export async function GET() {
         stats: {
           contacts: user._count.contacts,
           messages: user._count.messages,
-          groups: user._count.participants
+          groups: user._count.groups // Update this line to reflect the change
         }
       }
     });
