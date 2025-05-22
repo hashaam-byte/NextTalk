@@ -101,9 +101,10 @@ export async function POST(req: Request) {
     await prisma.notification.create({
       data: {
         userId: contactUser.id,
+        senderId: currentUser.id, // Changed from fromUserId to senderId to match schema
         type: "CONTACT_REQUEST",
         content: `${currentUser.name} wants to connect with you`,
-        fromUserId: currentUser.id
+        read: false
       }
     });
 
