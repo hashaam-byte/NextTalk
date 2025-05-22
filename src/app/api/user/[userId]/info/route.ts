@@ -13,40 +13,62 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: params.userId },
+    const { userId } = params;
+
+    // Get user info and related data
+    const userInfo = await prisma.user.findUnique({
+      where: { id: userId },
       select: {
+        id: true,
         name: true,
-        bio: true,
         profileImage: true,
+        bio: true,
+        status: true,
+        lastSeen: true,
+        _count: {
+          select: {
+            contacts: true,
+            groups: true,
+            messages: true,
+          },
+        },
         messages: {
           where: {
-            mediaUrl: { not: null }
+            mediaUrl: { not: null },
           },
           select: {
+            id: true,
             mediaUrl: true,
-            createdAt: true
+            createdAt: true,
+            type: true,
           },
-          orderBy: { createdAt: 'desc' },
-          take: 9
-        }
-      }
+          take: 9,
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
     });
 
-    if (!user) {
+    if (!userInfo) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      bio: user.bio,
-      sharedMedia: user.messages.map(msg => ({
-        type: 'image',
+    // Format the response
+    const response = {
+      ...userInfo,
+      sharedMedia: userInfo.messages.map((msg) => ({
+        type: msg.type || "image",
         url: msg.mediaUrl,
-        timestamp: msg.createdAt
-      }))
-    });
+        timestamp: msg.createdAt,
+      })),
+    };
+
+    delete response.messages; // Remove raw messages data
+
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("[USER_INFO]", error);
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+    console.error("[USER_INFO_GET]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
