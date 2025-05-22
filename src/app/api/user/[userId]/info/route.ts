@@ -40,7 +40,7 @@ export async function GET(
             id: true,
             mediaUrl: true,
             createdAt: true,
-            type: true,
+            content: true, // Changed from type to content
           },
           take: 9,
           orderBy: {
@@ -58,7 +58,7 @@ export async function GET(
     const response = {
       ...userInfo,
       sharedMedia: userInfo.messages.map((msg) => ({
-        type: msg.type || "image",
+        type: msg.mediaUrl?.split(".").pop() || "image", // Determine type from file extension
         url: msg.mediaUrl,
         timestamp: msg.createdAt,
       })),
