@@ -35,13 +35,13 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get recent activities
+    // Get recent activities - Updated include statement
     const recentActivities = await prisma.notification.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: {
-        fromUser: {
+        sender: {  // Changed from fromUser to sender
           select: { name: true }
         }
       }
@@ -75,7 +75,7 @@ export async function GET() {
         type: activity.type,
         content: activity.content,
         time: activity.createdAt,
-        fromUser: activity.fromUser?.name
+        fromUser: activity.sender?.name  // Changed from fromUser to sender
       })),
       onlineFriends
     });
