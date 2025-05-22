@@ -7,6 +7,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===== ENUMS =====
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum UserStatus {
+  ONLINE
+  OFFLINE
+  AWAY
+  BUSY
+}
+
+enum GroupRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum PrivacyLevel {
+  PUBLIC
+  FRIENDS
+  PRIVATE
+}
+
+// ===== MODELS =====
+
 model User {
   id                    String           @id @default(cuid())
   name                  String?
@@ -15,19 +50,19 @@ model User {
   phone                 String?
   profileImage          String?
   bio                   String?
-  status                String           @default("offline") // "online", "offline", "away", "busy"
+  status                String           @default("offline")
   lastSeen              DateTime?
-  lastActive            DateTime?        @default(now()) // Last activity timestamp
-  isTyping              Boolean          @default(false) // Typing status
-  typingInChat          String? // ChatId where user is typing
-  deviceId              String? // For handling multiple device sessions
+  lastActive            DateTime         @default(now())
+  isTyping              Boolean          @default(false)
+  typingInChat          String?
+  deviceId              String?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   messages              Message[]        @relation("UserMessages")
   participants          Participant[]
   receivedNotifications Notification[]   @relation("UserNotifications")
   sentNotifications     Notification[]   @relation("SentNotifications")
-  fromNotifications     Notification[]   @relation("FromUserNotifications")  // Add this line
+  fromNotifications     Notification[]   @relation("FromUserNotifications")
   contacts              User[]           @relation("UserContacts")
   contactOf             User[]           @relation("UserContacts")
   sentRequests          ContactRequest[] @relation("SentRequests")
@@ -36,40 +71,47 @@ model User {
   language              String           @default("en")
   notifications         Boolean          @default(true)
   soundEnabled          Boolean          @default(true)
-  privacyLevel          String           @default("friends") // "public", "friends", "private"
+  privacyLevel          String           @default("friends")
   readReceipts          Boolean          @default(true)
   groups                GroupMember[]
   ownedGroups           Group[]          @relation("GroupOwner")
   groupMessages         GroupMessage[]
   settings              UserSettings?
+  devices               Device[]         // Added for multi-device tracking
+
+  @@index([status])
+  @@index([lastSeen])
 }
 
 model Chat {
-  id           String        @id @default(cuid())
-  name         String?
-  isGroup      Boolean       @default(false)
-  avatar       String?
-  lastActivity DateTime      @default(now()) // Track last chat activity
-  activeUsers  String[]      @default([]) // Array of active user IDs in chat
-  typingUsers  String[]      @default([]) // Array of currently typing user IDs
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  messages     Message[]     @relation("ChatMessages")
-  participants Participant[]
+  id               String        @id @default(cuid())
+  name             String?
+  isGroup          Boolean       @default(false)
+  avatar           String?
+  lastActivity     DateTime      @default(now())
+  activeUsers      String[]      @default([])
+  typingUsers      String[]      @default([])
+  sharedMediaUrls  String[]      @default([])  // New
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  messages         Message[]     @relation("ChatMessages")
+  participants     Participant[]
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String
-  mediaUrl  String?
-  createdAt DateTime @default(now())
-  senderId  String
-  chatId    String
-  isRead    Boolean  @default(false)
-  status    String   @default("sent") // 'sent', 'delivered', 'read'
-  timestamp DateTime @default(now()) // Add this field
-  sender    User     @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  chat      Chat     @relation("ChatMessages", fields: [chatId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  content    String
+  mediaUrl   String?
+  mediaType  MediaType?  // New
+  createdAt  DateTime  @default(now())
+  senderId   String
+  chatId     String
+  isRead     Boolean   @default(false)
+  status     String    @default("sent")
+  timestamp  DateTime  @default(now())
+  deleted    Boolean   @default(false)  // Soft delete
+  sender     User      @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  chat       Chat      @relation("ChatMessages", fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([senderId])
   @@index([chatId])
@@ -88,7 +130,7 @@ model Participant {
 
 model Notification {
   id         String   @id @default(cuid())
-  type       String   // 'GROUP_MESSAGE', 'DIRECT_MESSAGE', etc.
+  type       String
   content    String
   userId     String
   senderId   String
@@ -112,7 +154,7 @@ model ContactRequest {
   id          String   @id @default(cuid())
   senderId    String
   recipientId String
-  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   sender      User     @relation("SentRequests", fields: [senderId], references: [id])
   recipient   User     @relation("ReceivedRequests", fields: [recipientId], references: [id])
@@ -141,7 +183,7 @@ model GroupMember {
   id       String   @id @default(cuid())
   groupId  String
   userId   String
-  role     String   @default("MEMBER") // ADMIN, MODERATOR, MEMBER
+  role     String   @default("MEMBER")
   joinedAt DateTime @default(now())
   group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -152,14 +194,16 @@ model GroupMember {
 }
 
 model GroupMessage {
-  id        String   @id @default(cuid())
-  content   String
-  groupId   String
-  senderId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  id         String     @id @default(cuid())
+  content    String
+  groupId    String
+  senderId   String
+  mediaUrl   String?     // New
+  mediaType  MediaType?  // New
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender     User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([groupId])
   @@index([senderId])
@@ -183,9 +227,14 @@ model UserSettings {
   @@index([userId])
 }
 
-enum MediaType {
-  IMAGE
-  VIDEO
-  AUDIO
-  DOCUMENT
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId  String
+  platform  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
