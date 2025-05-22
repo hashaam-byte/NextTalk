@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/authConfig";
 
 export async function GET() {
   try {
@@ -57,9 +57,12 @@ export async function GET() {
           }
         }
       }) || 0,
-      groups: await prisma.groupMember.count({
+      groups: await prisma.chat.count({
         where: {
-          userId: user.id
+          isGroup: true,
+          participants: {
+            some: { userId: user.id }
+          }
         }
       }) || 0
     };
