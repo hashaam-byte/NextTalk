@@ -54,6 +54,8 @@ export default function CreateGroupPage() {
     if (!groupName || selectedContacts.length === 0) return;
 
     try {
+      setIsLoading(true); // Add loading state while creating group
+
       const response = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,12 +66,32 @@ export default function CreateGroupPage() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        router.push('/groups');
+      if (!response.ok) {
+        throw new Error('Failed to create group');
       }
+
+      const data = await response.json();
+      
+      // Show success state (optional)
+      // Create notification for group creation
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'GROUP_CREATED',
+          content: `You were added to group ${groupName}`,
+          groupId: data.groupId,
+          timestamp: new Date()
+        }),
+      });
+
+      // Redirect to the groups page
+      router.push('/groups');
     } catch (error) {
       console.error('Error creating group:', error);
+      // Handle error (show error message to user)
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -266,14 +288,17 @@ export default function CreateGroupPage() {
         </div>
       </div>
 
-      {/* Create Button */}
+      {/* Create Button - Update to show loading state */}
       <div className="p-4 border-t border-white/10 bg-black/30 backdrop-blur-lg">
         <button
           onClick={handleCreateGroup}
-          disabled={!groupName || selectedContacts.length === 0}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/20 transition-all"
+          disabled={!groupName || selectedContacts.length === 0 || isLoading}
+          className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-medium hover:shadow-lg hover:shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          Create Group ({selectedContacts.length} members)
+          {isLoading ? (
+            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin mr-2" />
+          ) : null}
+          {isLoading ? 'Creating Group...' : 'Create Group'}
         </button>
       </div>
     </div>
