@@ -22,10 +22,16 @@ export async function GET() {
     const notifications = await prisma.notification.findMany({
       where: { userId: user.id },
       include: {
-        fromUser: {
+        sender: {
           select: {
             name: true,
             profileImage: true,
+          }
+        },
+        group: {
+          select: {
+            name: true,
+            avatar: true
           }
         }
       },
