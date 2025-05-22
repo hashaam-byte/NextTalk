@@ -83,13 +83,13 @@ export async function GET() {
       }
     }) || [];
 
-    // Get recent activities
+    // Get recent activities - Updated include statement
     const activities = await prisma.notification.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 10,
       include: {
-        fromUser: {
+        sender: {  // Changed from fromUser to sender
           select: {
             name: true,
             profileImage: true
@@ -101,7 +101,12 @@ export async function GET() {
     return NextResponse.json({
       stats,
       onlineContacts,
-      activities
+      activities: activities.map(activity => ({
+        type: activity.type,
+        content: activity.content,
+        time: activity.createdAt,
+        fromUser: activity.sender?.name  // Changed from fromUser to sender
+      }))
     });
   } catch (error) {
     console.error("[DASHBOARD_GET]", error);
