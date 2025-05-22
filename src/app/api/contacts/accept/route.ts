@@ -61,8 +61,8 @@ export async function POST(req: Request) {
           data: {
             type: "CONTACT_ACCEPTED",
             content: `${notification.user.name || 'Someone'} accepted your contact request`,
-            userId: notificationId,
-            senderId: notification.userId,  // Changed from fromUserId to senderId to match schema
+            userId: notification.senderId, // Use senderId instead of notificationId
+            senderId: notification.userId,  // Current user becomes the sender
             read: false
           }
         });
