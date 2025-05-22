@@ -41,44 +41,46 @@ export default function GroupsPage() {
         setGroups(data.groups || []);
       } catch (error) {
         console.error('Error fetching groups:', error);
+        setGroups([]);
       }
     };
 
     fetchGroups();
+    // Poll for new groups every 30 seconds
+    const interval = setInterval(fetchGroups, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const filteredGroups = searchQuery
-    ? groups.filter(group => 
-        group.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : groups;
+  const handleGroupClick = (groupId: string) => {
+    router.push(`/groups/${groupId}`);
+  };
 
   return (
     <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+      {/* Search header */}
       <div className="p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            className="w-full py-2 pl-10 pr-4 bg-white/10 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-            placeholder="Search groups..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white/10 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-white placeholder-gray-400"
+            placeholder="Search groups..."
           />
         </div>
       </div>
 
+      {/* Groups list */}
       <div className="flex-1 overflow-y-auto p-4">
-        {filteredGroups.map((group) => (
+        {groups.map((group) => (
           <motion.div
             key={group.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-all"
-            onClick={() => router.push(`/groups/${group.id}`)}
+            onClick={() => handleGroupClick(group.id)}
+            className="mb-4 p-4 bg-white/5 rounded-xl cursor-pointer hover:bg-white/10"
           >
             <div className="flex items-center">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden border border-white/10">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden">
                 {group.avatar ? (
                   <Image
                     src={group.avatar}
@@ -92,29 +94,23 @@ export default function GroupsPage() {
                   </div>
                 )}
               </div>
-              <div className="ml-4 flex-1">
+              <div className="ml-4">
                 <h3 className="text-white font-medium">{group.name}</h3>
                 <p className="text-sm text-gray-400">
                   {group.members.length} members
                 </p>
               </div>
-              {group.messages.length > 0 && (
-                <div className="text-right">
-                  <p className="text-sm text-gray-400">
-                    {new Date(group.messages[0].createdAt).toLocaleTimeString()}
-                  </p>
-                </div>
-              )}
             </div>
           </motion.div>
         ))}
       </div>
 
+      {/* Create group button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="fixed bottom-6 right-6 p-4 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
         onClick={() => router.push('/create-group')}
+        className="fixed bottom-6 right-6 p-4 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
       >
         <Plus size={24} />
       </motion.button>

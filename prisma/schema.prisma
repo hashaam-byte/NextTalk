@@ -37,7 +37,7 @@ model User {
   soundEnabled          Boolean          @default(true)
   privacyLevel          String           @default("friends") // "public", "friends", "private"
   readReceipts          Boolean          @default(true)
-  groups                Group[]          @relation("GroupMembers")
+  groups                GroupMember[]
   ownedGroups           Group[]          @relation("GroupOwner")
   groupMessages         GroupMessage[]
   settings              UserSettings?
@@ -86,15 +86,23 @@ model Participant {
 }
 
 model Notification {
-  id         String   @id @default(cuid())
-  userId     String
-  type       String // CONTACT_REQUEST, MESSAGE, etc.
-  content    String
-  fromUserId String?
-  read       Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  user       User     @relation("UserNotifications", fields: [userId], references: [id])
-  fromUser   User?    @relation("SentNotifications", fields: [fromUserId], references: [id])
+  id        String   @id @default(cuid())
+  type      String
+  content   String
+  userId    String
+  senderId  String?
+  groupId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sender  User?   @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  group   Group?  @relation("GroupNotifications", fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([senderId])
+  @@index([groupId])
 }
 
 model ContactRequest {
@@ -114,15 +122,30 @@ model Group {
   name        String
   description String?
   avatar      String?
-  isPublic    Boolean        @default(true)
-  ownerId     String
-  owner       User           @relation("GroupOwner", fields: [ownerId], references: [id])
-  members     User[]         @relation("GroupMembers")
-  messages    GroupMessage[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  createdBy   String
+  owner       User          @relation("GroupOwner", fields: [createdBy], references: [id])
+  members     GroupMember[]
+  messages    GroupMessage[]
+  notifications Notification[] @relation("GroupNotifications")
+  isPublic    Boolean       @default(false)
 
-  @@index([ownerId])
+  @@index([createdBy])
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  role      String   @default("MEMBER")
+  joinedAt  DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
 }
 
 model GroupMessage {
