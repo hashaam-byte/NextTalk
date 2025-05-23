@@ -41,6 +41,11 @@ model User {
   ownedGroups           Group[]          @relation("GroupOwner")
   groupMessages         GroupMessage[]
   settings              UserSettings?
+  outgoingCalls         Call[]           @relation("OutgoingCalls")
+  incomingCalls         Call[]           @relation("IncomingCalls")
+  blockedUsers          User[]           @relation("BlockedUsers")
+  blockedBy             User[]           @relation("BlockedUsers")
+  mutedChats            String[]         // Array of chat IDs that are muted
 }
 
 model Chat {
@@ -178,6 +183,22 @@ model UserSettings {
   lastUpdated   DateTime @updatedAt
 
   @@index([userId])
+}
+
+model Call {
+  id        String   @id @default(cuid())
+  type      String   // 'AUDIO' or 'VIDEO'
+  status    String   // 'ONGOING', 'ENDED', 'MISSED', 'REJECTED'
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  duration  Int?     // in seconds
+  callerId  String
+  caller    User     @relation("OutgoingCalls", fields: [callerId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver  User     @relation("IncomingCalls", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([callerId])
+  @@index([receiverId])
 }
 
 enum MediaType {

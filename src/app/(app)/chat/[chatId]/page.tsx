@@ -7,6 +7,8 @@ import { ArrowLeft, Send, Smile, Video, Phone, MoreVertical, Copy, Forward, Star
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import EmojiPicker from '@/components/chat/EmojiPicker';
+import CallOverlay from '@/components/call/CallOverlay';
+import ContactDrawer from '@/components/chat/ContactDrawer';
 
 interface Message {
   id: string;
@@ -61,6 +63,10 @@ export default function ChatPage() {
   const [messageActionsPosition, setMessageActionsPosition] = useState({ x: 0, y: 0 });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [activeCall, setActiveCall] = useState<{
+    type: 'audio' | 'video';
+    isIncoming: boolean;
+  } | null>(null);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -327,6 +333,81 @@ export default function ChatPage() {
     setMessage(prev => prev + emoji);
   };
 
+  // Handle call actions
+  const handleStartCall = (type: 'audio' | 'video') => {
+    // Emit socket event to start call
+    if (global.io) {
+      global.io.emit('call:start', {
+        type,
+        recipientId: chatInfo?.id
+      });
+    }
+    setActiveCall({ type, isIncoming: false });
+  };
+
+  const handleAnswerCall = (withVideo: boolean) => {
+    // Emit socket event to answer call
+    if (global.io) {
+      global.io.emit('call:answer', {
+        accepted: true,
+        withVideo
+      });
+    }
+    setActiveCall(prev => prev ? { ...prev, isIncoming: false } : null);
+  };
+
+  const handleDeclineCall = () => {
+    // Emit socket event to decline call
+    if (global.io) {
+      global.io.emit('call:answer', {
+        accepted: false
+      });
+    }
+    setActiveCall(null);
+  };
+
+  const handleEndCall = () => {
+    // Emit socket event to end call
+    if (global.io) {
+      global.io.emit('call:end');
+    }
+    setActiveCall(null);
+  };
+
+  // Handle contact actions
+  const handleMuteContact = async () => {
+    try {
+      await fetch(`/api/contacts/${chatInfo?.id}/mute`, {
+        method: 'POST'
+      });
+      // Update local state or show notification
+    } catch (error) {
+      console.error('Error muting contact:', error);
+    }
+  };
+
+  const handleBlockContact = async () => {
+    try {
+      await fetch(`/api/contacts/${chatInfo?.id}/block`, {
+        method: 'POST'
+      });
+      router.push('/chat');
+    } catch (error) {
+      console.error('Error blocking contact:', error);
+    }
+  };
+
+  const handleReportContact = async () => {
+    try {
+      await fetch(`/api/contacts/${chatInfo?.id}/report`, {
+        method: 'POST'
+      });
+      router.push('/chat');
+    } catch (error) {
+      console.error('Error reporting contact:', error);
+    }
+  };
+
   return (
     <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
       {/* Header */}
@@ -394,10 +475,16 @@ export default function ChatPage() {
           </div>
 
           <div className="flex items-center space-x-2">
-            <button className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200">
+            <button
+              onClick={() => handleStartCall('audio')}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
+            >
               <Phone size={20} />
             </button>
-            <button className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200">
+            <button
+              onClick={() => handleStartCall('video')}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
+            >
               <Video size={20} />
             </button>
             <div className="relative">
@@ -556,73 +643,32 @@ export default function ChatPage() {
         )}
       </AnimatePresence>
 
+      {/* Call Overlay */}
+      <AnimatePresence>
+        {activeCall && (
+          <CallOverlay
+            type={activeCall.type}
+            callerName={chatInfo?.name || 'User'}
+            callerImage={chatInfo?.avatar}
+            isIncoming={activeCall.isIncoming}
+            onAnswer={handleAnswerCall}
+            onDecline={handleDeclineCall}
+            onEnd={handleEndCall}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Contact Info Drawer */}
       <AnimatePresence>
-        {showContactInfo && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            className="fixed right-0 top-0 h-full w-80 bg-gray-900/95 backdrop-blur-lg border-l border-white/10 z-50"
-          >
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">Contact Info</h2>
-                <button
-                  onClick={() => setShowContactInfo(false)}
-                  className="p-2 rounded-full hover:bg-white/10 text-gray-400"
-                >
-                  <MoreVertical size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Profile Section */}
-                <div className="text-center">
-                  <div className="w-24 h-24 mx-auto rounded-full overflow-hidden mb-3">
-                    {chatInfo?.avatar ? (
-                      <Image
-                        src={chatInfo.avatar}
-                        alt={chatInfo.name || ''}
-                        width={96}
-                        height={96}
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white text-2xl">
-                        {chatInfo?.name?.[0]}
-                      </div>
-                    )}
-                  </div>
-                  <h3 className="text-lg font-medium text-white">{chatInfo?.name}</h3>
-                  {contactInfo?.bio && (
-                    <p className="text-sm text-gray-400 mt-2">{contactInfo.bio}</p>
-                  )}
-                </div>
-
-                {/* Shared Media */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Shared Media</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {contactInfo?.sharedMedia.map((media, index) => (
-                      <div
-                        key={index}
-                        className="aspect-square rounded-lg overflow-hidden bg-white/5"
-                      >
-                        <Image
-                          src={media.url}
-                          alt=""
-                          width={80}
-                          height={80}
-                          className="object-cover w-full h-full"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+        {showContactInfo && chatInfo && (
+          <ContactDrawer
+            contact={chatInfo}
+            commonGroups={[]} // Fetch from API
+            onClose={() => setShowContactInfo(false)}
+            onMute={handleMuteContact}
+            onBlock={handleBlockContact}
+            onReport={handleReportContact}
+          />
         )}
       </AnimatePresence>
 
