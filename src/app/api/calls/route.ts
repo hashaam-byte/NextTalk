@@ -42,7 +42,7 @@ export async function POST(req: Request) {
           select: {
             id: true,
             name: true,
-            image: true
+            profileImage: true // Changed from 'image' to 'profileImage'
           }
         }
       }
@@ -52,7 +52,11 @@ export async function POST(req: Request) {
     global.io?.to(receiverId).emit('call:incoming', {
       callId: call.id,
       type: call.type,
-      caller: call.caller,
+      caller: {
+        id: call.caller.id,
+        name: call.caller.name,
+        image: call.caller.profileImage // Map profileImage to image in the response
+      },
       roomId: call.roomId
     });
 
@@ -60,5 +64,47 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Error initiating call:', error);
     return NextResponse.json({ error: 'Failed to initiate call' }, { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const calls = await prisma.call.findMany({
+      where: {
+        OR: [
+          { callerId: session.user.id },
+          { receiverId: session.user.id }
+        ]
+      },
+      include: {
+        caller: {
+          select: {
+            id: true,
+            name: true,
+            profileImage: true
+          }
+        },
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            profileImage: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return NextResponse.json({ calls });
+  } catch (error) {
+    console.error('Error fetching calls:', error);
+    return NextResponse.json({ error: 'Failed to fetch calls' }, { status: 500 });
   }
 }
