@@ -120,8 +120,8 @@ export default function CreateGroupPage() {
         <div className="absolute top-3/4 left-1/3 w-40 h-40 bg-indigo-600/20 rounded-full filter blur-3xl"></div>
       </div>
 
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
         <div className="flex items-center">
           <button
             onClick={() => router.back()}
@@ -135,158 +135,159 @@ export default function CreateGroupPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col p-4">
-        {/* Group Info Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <div 
-                onClick={handleImageClick}
-                className="w-20 h-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden cursor-pointer transition-all hover:bg-white/20"
-              >
-                {groupAvatar ? (
-                  <Image
-                    src={groupAvatar}
-                    alt="Group avatar"
-                    width={80}
-                    height={80}
-                    className="object-cover w-full h-full"
-                  />
-                ) : (
-                  <Users size={32} className="text-gray-400" />
-                )}
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-6">
+          {/* Group Info Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <div 
+                  onClick={handleImageClick}
+                  className="w-20 h-20 rounded-full bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden cursor-pointer transition-all hover:bg-white/20"
+                >
+                  {groupAvatar ? (
+                    <Image
+                      src={groupAvatar}
+                      alt="Group avatar"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <Users className="w-8 h-8 text-gray-400" />
+                  )}
+                </div>
+                <button 
+                  onClick={handleImageClick}
+                  className="absolute bottom-0 right-0 p-2 rounded-full bg-purple-500 hover:bg-purple-600 text-white shadow-lg transition-all hover:scale-110"
+                >
+                  <Camera size={16} />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
               </div>
-              <button 
-                onClick={handleImageClick}
-                className="absolute bottom-0 right-0 p-2 rounded-full bg-purple-500 hover:bg-purple-600 text-white shadow-lg transition-all hover:scale-110"
-              >
-                <Camera size={16} />
-              </button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="hidden"
-              />
+              <div className="flex-1 space-y-4">
+                <input
+                  type="text"
+                  placeholder="Group name"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                />
+                <textarea
+                  placeholder="Group description (optional)"
+                  value={groupBio}
+                  onChange={(e) => setGroupBio(e.target.value)}
+                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none h-20"
+                />
+              </div>
             </div>
-            <div className="flex-1">
+          </motion.div>
+
+          {/* Selected Contacts */}
+          {selectedContacts.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-wrap gap-2 mb-4"
+            >
+              {selectedContacts.map(contact => (
+                <motion.div
+                  key={contact.id}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  className="bg-purple-500/20 border border-purple-500/30 rounded-full px-3 py-1 flex items-center space-x-2"
+                >
+                  <span className="text-sm text-white">{contact.name}</span>
+                  <button
+                    onClick={() => handleContactSelect(contact)}
+                    className="text-purple-300 hover:text-purple-100"
+                  >
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
+          {/* Search Bar */}
+          <div className="sticky top-0 bg-gray-900/50 backdrop-blur-sm py-2 z-10">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Group name"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 mb-3"
-              />
-              <textarea
-                placeholder="Group bio (optional)"
-                value={groupBio}
-                onChange={(e) => setGroupBio(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 h-24 resize-none"
+                placeholder="Search contacts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
               />
             </div>
           </div>
-        </motion.div>
 
-        {/* Selected Contacts */}
-        {selectedContacts.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-wrap gap-2 mb-4"
-          >
-            {selectedContacts.map(contact => (
-              <motion.div
-                key={contact.id}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                className="bg-purple-500/20 border border-purple-500/30 rounded-full px-3 py-1 flex items-center space-x-2"
-              >
-                <span className="text-sm text-white">{contact.name}</span>
-                <button
+          {/* Contacts List */}
+          <div className="space-y-2">
+            <AnimatePresence>
+              {filteredContacts.map((contact, index) => (
+                <motion.div
+                  key={contact.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2, delay: index * 0.05 }}
+                  className="flex items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer"
                   onClick={() => handleContactSelect(contact)}
-                  className="text-purple-300 hover:text-purple-100"
                 >
-                  <X size={14} />
-                </button>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-
-        {/* Search Bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search contacts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/10 border border-white/20 rounded-xl pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-          />
-        </div>
-
-        {/* Contacts List */}
-        <div className="flex-1 overflow-y-auto">
-          <AnimatePresence>
-            {filteredContacts.map((contact, index) => (
-              <motion.div
-                key={contact.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`flex items-center p-3 rounded-xl mb-2 cursor-pointer transition-all ${
-                  selectedContacts.find(c => c.id === contact.id)
-                    ? 'bg-purple-500/20 border border-purple-500/30'
-                    : 'hover:bg-white/5'
-                }`}
-                onClick={() => handleContactSelect(contact)}
-              >
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10">
-                    {contact.avatar ? (
-                      <Image
-                        src={contact.avatar}
-                        alt={contact.name}
-                        width={48}
-                        height={48}
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-500/30 to-indigo-500/30 flex items-center justify-center text-white">
-                        {contact.name[0]}
-                      </div>
-                    )}
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10">
+                      {contact.avatar ? (
+                        <Image
+                          src={contact.avatar}
+                          alt={contact.name}
+                          width={48}
+                          height={48}
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-purple-500/30 to-indigo-500/30 flex items-center justify-center text-white">
+                          {contact.name[0]}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="ml-3 flex-1">
-                  <p className="text-white font-medium">{contact.name}</p>
-                  <p className="text-gray-400 text-sm">{contact.email}</p>
-                </div>
-                {selectedContacts.find(c => c.id === contact.id) && (
-                  <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
-                    <Check size={14} className="text-white" />
+                  <div className="ml-3 flex-1">
+                    <p className="text-white font-medium">{contact.name}</p>
+                    <p className="text-gray-400 text-sm">{contact.email}</p>
                   </div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                  {selectedContacts.find(c => c.id === contact.id) && (
+                    <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center">
+                      <Check size={14} className="text-white" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      {/* Create Button */}
-      <div className="p-4 border-t border-white/10 bg-black/30 backdrop-blur-lg">
+      {/* Fixed Bottom Button */}
+      <div className="sticky bottom-0 p-4 border-t border-white/10 bg-black/30 backdrop-blur-lg">
         <button
           onClick={handleCreateGroup}
-          disabled={!groupName || selectedContacts.length === 0}
+          disabled={!groupName || selectedContacts.length === 0 || isLoading}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/20 transition-all"
         >
-          Create Group ({selectedContacts.length} members)
+          {isLoading ? 'Creating...' : `Create Group (${selectedContacts.length} members)`}
         </button>
       </div>
     </div>
