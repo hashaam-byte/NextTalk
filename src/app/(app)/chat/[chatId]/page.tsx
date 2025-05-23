@@ -255,6 +255,13 @@ export default function ChatPage() {
 
     // Handle call accepted
     global.io.on('call:accepted', (data: { callId: string; startTime: Date }) => {
+      // Stop ringtone
+      const audioElements = document.getElementsByTagName('audio');
+      Array.from(audioElements).forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+
       setActiveCall(prev => prev ? {
         ...prev,
         status: 'ongoing',
@@ -263,17 +270,35 @@ export default function ChatPage() {
     });
 
     // Handle call ended
-    global.io.on('call:ended', () => {
+    global.io.on('call:ended', (data: { callId: string }) => {
+      // Stop ringtone
+      const audioElements = document.getElementsByTagName('audio');
+      Array.from(audioElements).forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+
       setActiveCall(prev => prev ? { ...prev, status: 'ended' } : null);
       setTimeout(() => setActiveCall(null), 2000);
+    });
+
+    global.io.on('call:rejected', () => {
+      setActiveCall(null);
+      // Stop ringtone
+      const audioElements = document.getElementsByTagName('audio');
+      Array.from(audioElements).forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
     });
 
     return () => {
       global.io?.off('call:incoming');
       global.io?.off('call:accepted');
       global.io?.off('call:ended');
+      global.io?.off('call:rejected');
     };
-  }, []);
+  }, [chatId]);
 
   const sendMessage = async () => {
     if (!message.trim()) return;
@@ -380,15 +405,35 @@ export default function ChatPage() {
     setMessage(prev => prev + emoji);
   };
 
-  const handleStartCall = (type: 'audio' | 'video') => {
-    // Emit socket event to start call
-    if (global.io) {
-      global.io.emit('call:start', {
-        type,
-        recipientId: chatInfo?.id
+  const handleStartCall = async (type: 'audio' | 'video') => {
+    try {
+      const response = await fetch('/api/calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          receiverId: chatId,
+          roomId: `${chatId}-${Date.now()}` // Unique room ID for WebRTC
+        })
       });
+
+      const data = await response.json();
+      if (response.ok) {
+        setActiveCall({
+          id: data.id,
+          type,
+          status: 'ringing',
+          startTime: new Date()
+        });
+
+        // Start playing ringtone for caller
+        const audio = new Audio('/sounds/outgoing-ring.mp3');
+        audio.loop = true;
+        audio.play().catch(console.error);
+      }
+    } catch (error) {
+      console.error('Error starting call:', error);
     }
-    setActiveCall({ type, isIncoming: false });
   };
 
   const handleAnswerCall = async (callId: string, accepted: boolean) => {

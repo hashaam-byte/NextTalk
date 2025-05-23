@@ -10,26 +10,50 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { type, receiverId } = await req.json();
+    const { type, receiverId, roomId } = await req.json();
 
+    // Check if there's already an active call
+    const existingCall = await prisma.call.findFirst({
+      where: {
+        OR: [
+          { callerId: session.user.id, status: 'ONGOING' },
+          { receiverId: session.user.id, status: 'ONGOING' },
+          { callerId: receiverId, status: 'ONGOING' },
+          { receiverId: receiverId, status: 'ONGOING' }
+        ]
+      }
+    });
+
+    if (existingCall) {
+      return NextResponse.json({ error: 'User is in another call' }, { status: 400 });
+    }
+
+    // Create new call
     const call = await prisma.call.create({
       data: {
         type,
-        status: 'ONGOING',
+        status: 'RINGING',
         callerId: session.user.id,
-        receiverId
+        receiverId,
+        roomId
       },
       include: {
-        caller: true,
-        receiver: true
+        caller: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
       }
     });
 
     // Emit socket event for incoming call
-    global.io?.to(receiverId).emit('incomingCall', {
+    global.io?.to(receiverId).emit('call:incoming', {
       callId: call.id,
-      type,
-      caller: call.caller
+      type: call.type,
+      caller: call.caller,
+      roomId: call.roomId
     });
 
     return NextResponse.json(call);
