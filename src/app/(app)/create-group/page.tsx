@@ -21,6 +21,7 @@ export default function CreateGroupPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [groupName, setGroupName] = useState('');
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
+  const [groupBio, setGroupBio] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +62,7 @@ export default function CreateGroupPage() {
         body: JSON.stringify({
           name: groupName,
           avatar: groupAvatar,
+          bio: groupBio,
           members: selectedContacts.map(c => c.id)
         }),
       });
@@ -178,7 +180,13 @@ export default function CreateGroupPage() {
                 placeholder="Group name"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 mb-3"
+              />
+              <textarea
+                placeholder="Group bio (optional)"
+                value={groupBio}
+                onChange={(e) => setGroupBio(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 h-24 resize-none"
               />
             </div>
           </div>

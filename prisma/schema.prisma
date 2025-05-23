@@ -121,6 +121,7 @@ model Group {
   id          String         @id @default(cuid())
   name        String
   description String?
+  bio         String?        // Add this field
   avatar      String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt

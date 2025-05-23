@@ -39,11 +39,17 @@ interface GroupInfo {
   id: string;
   name: string;
   avatar?: string;
-  description?: string;
-  createdAt: Date;
-  members: GroupMember[];
-  admins: string[];
-  isPublic: boolean;
+  bio?: string;
+  members: {
+    userId: string;
+    role: string;
+    user: {
+      id: string;
+      name: string;
+      profileImage?: string;
+    };
+  }[];
+  createdBy: string;
 }
 
 const formatMessageTime = (timestamp: Date | string) => {
@@ -85,7 +91,7 @@ const formatMessageDate = (timestamp: Date | string) => {
   }
 };
 
-export default function GroupChatPage() {
+export default function GroupPage() {
   const { groupId } = useParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -96,6 +102,8 @@ export default function GroupChatPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isAdmin = session?.user?.id === groupInfo?.createdBy;
 
   // Add scroll to bottom functionality
   const scrollToBottom = () => {
@@ -187,6 +195,97 @@ export default function GroupChatPage() {
   const handleEmojiSelect = (emoji: string) => {
     setMessage(prev => prev + emoji);
   };
+
+  const GroupInfoDrawer = () => (
+    <motion.div
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      className="fixed right-0 top-0 h-full w-80 bg-gray-900/95 backdrop-blur-lg border-l border-white/10 z-50 overflow-y-auto"
+    >
+      <div className="p-4">
+        {/* Group Profile */}
+        <div className="text-center mb-6">
+          <div className="w-24 h-24 mx-auto rounded-full overflow-hidden mb-4">
+            {groupInfo?.avatar ? (
+              <Image
+                src={groupInfo.avatar}
+                alt={groupInfo.name}
+                width={96}
+                height={96}
+                className="object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white text-2xl">
+                {groupInfo?.name[0]}
+              </div>
+            )}
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">{groupInfo?.name}</h2>
+          {groupInfo?.bio && (
+            <p className="text-gray-300 text-sm mb-4">{groupInfo.bio}</p>
+          )}
+        </div>
+
+        {/* Members List */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-400 mb-3">Members ({groupInfo?.members.length})</h3>
+          <div className="space-y-2">
+            {groupInfo?.members.map((member) => (
+              <div key={member.userId} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full overflow-hidden">
+                    {member.user.profileImage ? (
+                      <Image
+                        src={member.user.profileImage}
+                        alt={member.user.name}
+                        width={40}
+                        height={40}
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-purple-500/30 to-indigo-500/30 flex items-center justify-center">
+                        {member.user.name[0]}
+                      </div>
+                    )}
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-white">{member.user.name}</p>
+                    <p className="text-xs text-gray-400">{member.role}</p>
+                  </div>
+                </div>
+                {isAdmin && member.userId !== session?.user?.id && (
+                  <button
+                    onClick={() => handleRemoveMember(member.userId)}
+                    className="p-1 text-red-400 hover:bg-red-400/10 rounded-full"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {isAdmin && (
+          <div className="mt-6 space-y-3">
+            <button
+              onClick={() => handleEditGroup()}
+              className="w-full py-2 px-4 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30"
+            >
+              Edit Group
+            </button>
+            <button
+              onClick={() => handleDeleteGroup()}
+              className="w-full py-2 px-4 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30"
+            >
+              Delete Group
+            </button>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 
   return (
     <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
@@ -285,101 +384,7 @@ export default function GroupChatPage() {
       {/* Group Info Sidebar */}
       <AnimatePresence>
         {showGroupInfo && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            className="fixed right-0 top-0 h-full w-80 bg-gray-900/95 backdrop-blur-lg border-l border-white/10 z-50"
-          >
-            {/* Group info content */}
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">Group Info</h2>
-                <button
-                  onClick={() => setShowGroupInfo(false)}
-                  className="p-2 rounded-full hover:bg-white/10 text-gray-400"
-                >
-                  <MoreVertical size={20} />
-                </button>
-              </div>
-
-              {/* Group Details */}
-              <div className="space-y-6">
-                {/* Group Avatar and Name */}
-                <div className="text-center">
-                  <div className="w-24 h-24 mx-auto rounded-full overflow-hidden mb-3">
-                    {groupInfo?.avatar ? (
-                      <Image
-                        src={groupInfo.avatar}
-                        alt={groupInfo.name || ''}
-                        width={96}
-                        height={96}
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
-                        <Users size={32} className="text-white" />
-                      </div>
-                    )}
-                  </div>
-                  <h3 className="text-lg font-medium text-white">{groupInfo?.name}</h3>
-                  {groupInfo?.description && (
-                    <p className="text-sm text-gray-400 mt-2">{groupInfo.description}</p>
-                  )}
-                </div>
-
-                {/* Member List */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Members ({groupInfo?.members?.length || 0})</h4>
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {groupInfo?.members?.map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex items-center p-2 rounded-lg hover:bg-white/5"
-                      >
-                        <div className="relative">
-                          <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10">
-                            {member.avatar ? (
-                              <Image
-                                src={member.avatar}
-                                alt={member.name}
-                                width={32}
-                                height={32}
-                                className="object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-purple-500/30 to-indigo-500/30 flex items-center justify-center text-white">
-                                {member.name[0]}
-                              </div>
-                            )}
-                          </div>
-                          {member.isOnline && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900" />
-                          )}
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-white">{member.name}</p>
-                          <p className="text-xs text-gray-400">{member.role}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Admin Actions */}
-                {groupInfo?.admins?.includes(session?.user?.id as string) && (
-                  <div className="space-y-2">
-                    <button className="w-full p-2 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 transition-all">
-                      Add Members
-                    </button>
-                    <button className="w-full p-2 rounded-lg bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 transition-all">
-                      Delete Group
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
+          <GroupInfoDrawer />
         )}
       </AnimatePresence>
 
