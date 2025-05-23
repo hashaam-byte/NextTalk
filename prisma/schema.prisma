@@ -41,8 +41,8 @@ model User {
   ownedGroups           Group[]          @relation("GroupOwner")
   groupMessages         GroupMessage[]
   settings              UserSettings?
-  outgoingCalls         Call[]           @relation("OutgoingCalls")
-  incomingCalls         Call[]           @relation("IncomingCalls")
+  outgoingCalls         Call[]           @relation("outgoingCalls")
+  incomingCalls         Call[]           @relation("incomingCalls")
   blockedUsers          User[]           @relation("BlockedUsers")
   blockedBy             User[]           @relation("BlockedUsers")
   mutedChats            String[]         // Array of chat IDs that are muted
@@ -197,28 +197,29 @@ enum CallStatus {
   ONGOING
   ENDED
   MISSED
-  NO_ANSWER
+  REJECTED
 }
 
-enum NotificationType {
-  MESSAGE
-  CONTACT_REQUEST
-  GROUP_INVITE
-  CALL_INCOMING
-  CALL_MISSED
+enum CallType {
+  AUDIO
+  VIDEO
 }
 
 model Call {
-  id          String      @id @default(cuid())
-  type        String      // 'AUDIO' or 'VIDEO'
-  status      CallStatus
-  startTime   DateTime?
-  endTime     DateTime?
-  callerId    String
-  receiverId  String
-  roomId      String      @unique // For WebRTC room identification
-  caller      User        @relation("OutgoingCalls", fields: [callerId], references: [id])
-  receiver    User        @relation("IncomingCalls", fields: [receiverId], references: [id])
+  id         String     @id @default(cuid())
+  type       CallType
+  status     CallStatus
+  roomId     String     @unique
+  startTime  DateTime?
+  endTime    DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  // Relations
+  callerId   String
+  caller     User       @relation("outgoingCalls", fields: [callerId], references: [id])
+  receiverId String  
+  receiver   User       @relation("incomingCalls", fields: [receiverId], references: [id])
 
   @@index([callerId])
   @@index([receiverId])
