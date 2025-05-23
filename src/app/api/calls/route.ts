@@ -12,20 +12,61 @@ export async function POST(req: Request) {
 
     const { type, receiverId, roomId } = await req.json();
 
+    // Verify both users exist
+    const [caller, receiver] = await Promise.all([
+      prisma.user.findUnique({
+        where: { email: session.user.email }
+      }),
+      prisma.user.findUnique({
+        where: { id: receiverId }
+      })
+    ]);
+
+    if (!caller) {
+      return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
+    }
+
+    if (!receiver) {
+      return NextResponse.json({ error: 'Receiver not found' }, { status: 404 });
+    }
+
     // Check if there's already an active call
     const existingCall = await prisma.call.findFirst({
       where: {
         OR: [
-          { callerId: session.user.id, status: 'ONGOING' },
-          { receiverId: session.user.id, status: 'ONGOING' },
-          { callerId: receiverId, status: 'ONGOING' },
-          { receiverId: receiverId, status: 'ONGOING' }
+          { 
+            AND: [
+              { callerId: caller.id },
+              { status: 'ONGOING' }
+            ]
+          },
+          {
+            AND: [
+              { receiverId: caller.id },
+              { status: 'ONGOING' }
+            ]
+          },
+          {
+            AND: [
+              { callerId: receiverId },
+              { status: 'ONGOING' }
+            ]
+          },
+          {
+            AND: [
+              { receiverId: receiverId },
+              { status: 'ONGOING' }
+            ]
+          }
         ]
       }
     });
 
     if (existingCall) {
-      return NextResponse.json({ error: 'User is in another call' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'One of the users is already in a call' }, 
+        { status: 400 }
+      );
     }
 
     // Create new call
@@ -33,8 +74,8 @@ export async function POST(req: Request) {
       data: {
         type,
         status: 'RINGING',
-        callerId: session.user.id,
-        receiverId,
+        callerId: caller.id,
+        receiverId: receiver.id,
         roomId
       },
       include: {
@@ -42,7 +83,7 @@ export async function POST(req: Request) {
           select: {
             id: true,
             name: true,
-            profileImage: true // Changed from 'image' to 'profileImage'
+            profileImage: true
           }
         }
       }
@@ -55,7 +96,7 @@ export async function POST(req: Request) {
       caller: {
         id: call.caller.id,
         name: call.caller.name,
-        image: call.caller.profileImage // Map profileImage to image in the response
+        image: call.caller.profileImage
       },
       roomId: call.roomId
     });
@@ -63,7 +104,10 @@ export async function POST(req: Request) {
     return NextResponse.json(call);
   } catch (error) {
     console.error('Error initiating call:', error);
-    return NextResponse.json({ error: 'Failed to initiate call' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to initiate call' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -74,11 +118,19 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const calls = await prisma.call.findMany({
       where: {
         OR: [
-          { callerId: session.user.id },
-          { receiverId: session.user.id }
+          { callerId: user.id },
+          { receiverId: user.id }
         ]
       },
       include: {
@@ -105,6 +157,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ calls });
   } catch (error) {
     console.error('Error fetching calls:', error);
-    return NextResponse.json({ error: 'Failed to fetch calls' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch calls' }, 
+      { status: 500 }
+    );
   }
 }
