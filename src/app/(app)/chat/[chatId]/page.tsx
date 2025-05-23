@@ -45,15 +45,15 @@ interface ContactInfo {
   }[];
 }
 
-interface ActiveCall {
-  id: string;
+interface CallNotification {
+  callId: string;
   type: 'audio' | 'video';
-  status: 'ringing' | 'ongoing';
-  callerId: string;
   caller: {
+    id: string;
     name: string;
     image?: string;
   };
+  startTime?: Date;
 }
 
 export default function ChatPage() {
@@ -74,7 +74,13 @@ export default function ChatPage() {
   const [messageActionsPosition, setMessageActionsPosition] = useState({ x: 0, y: 0 });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+  const [incomingCall, setIncomingCall] = useState<CallNotification | null>(null);
+  const [activeCall, setActiveCall] = useState<{
+    id: string;
+    type: 'audio' | 'video';
+    status: 'ringing' | 'ongoing' | 'ended';
+    startTime?: Date;
+  } | null>(null);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -236,6 +242,39 @@ export default function ChatPage() {
     fetchContactInfo();
   }, [showContactInfo, chatInfo?.id]);
 
+  useEffect(() => {
+    if (!global.io) return;
+
+    // Handle incoming call
+    global.io.on('call:incoming', (data: CallNotification) => {
+      setIncomingCall(data);
+      const audio = new Audio('/sounds/ringtone.mp3');
+      audio.loop = true;
+      audio.play().catch(console.error);
+    });
+
+    // Handle call accepted
+    global.io.on('call:accepted', (data: { callId: string; startTime: Date }) => {
+      setActiveCall(prev => prev ? {
+        ...prev,
+        status: 'ongoing',
+        startTime: new Date(data.startTime)
+      } : null);
+    });
+
+    // Handle call ended
+    global.io.on('call:ended', () => {
+      setActiveCall(prev => prev ? { ...prev, status: 'ended' } : null);
+      setTimeout(() => setActiveCall(null), 2000);
+    });
+
+    return () => {
+      global.io?.off('call:incoming');
+      global.io?.off('call:accepted');
+      global.io?.off('call:ended');
+    };
+  }, []);
+
   const sendMessage = async () => {
     if (!message.trim()) return;
 
@@ -341,7 +380,6 @@ export default function ChatPage() {
     setMessage(prev => prev + emoji);
   };
 
-  // Handle call actions
   const handleStartCall = (type: 'audio' | 'video') => {
     // Emit socket event to start call
     if (global.io) {
@@ -353,15 +391,26 @@ export default function ChatPage() {
     setActiveCall({ type, isIncoming: false });
   };
 
-  const handleAnswerCall = (withVideo: boolean) => {
-    // Emit socket event to answer call
-    if (global.io) {
-      global.io.emit('call:answer', {
-        accepted: true,
-        withVideo
+  const handleAnswerCall = async (callId: string, accepted: boolean) => {
+    try {
+      await fetch(`/api/calls/${callId}/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accepted })
       });
+
+      if (accepted && incomingCall) {
+        setActiveCall({
+          id: callId,
+          type: incomingCall.type,
+          status: 'ongoing',
+          startTime: new Date()
+        });
+      }
+      setIncomingCall(null);
+    } catch (error) {
+      console.error('Error answering call:', error);
     }
-    setActiveCall(prev => prev ? { ...prev, isIncoming: false } : null);
   };
 
   const handleDeclineCall = () => {
@@ -530,40 +579,36 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Active Call Notification - Shown when there's an active call */}
-      {activeCall && (
-        <div className="sticky top-16 z-20 p-3 bg-purple-500/10 backdrop-blur-sm border-b border-white/10">
+      {/* Incoming Call Notification */}
+      {incomingCall && (
+        <div className="sticky top-16 z-30 p-4 bg-gradient-to-r from-purple-600/90 to-indigo-600/90 backdrop-blur-lg border-b border-white/10">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
-                {activeCall.type === 'video' ? <Video size={16} /> : <Phone size={16} />}
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                {incomingCall.type === 'video' ? <Video className="w-6 h-6" /> : <Phone className="w-6 h-6" />}
               </div>
               <div>
-                <p className="text-sm text-white">
-                  {activeCall.caller.name} is calling...
-                </p>
-                <p className="text-xs text-gray-400">
-                  Ongoing {activeCall.type} call
-                </p>
+                <p className="text-white font-medium">{incomingCall.caller.name}</p>
+                <p className="text-sm text-white/80">Incoming {incomingCall.type} call...</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => handleAnswerCall(true)} // Join with video by default
-                className="px-4 py-1.5 rounded-full bg-green-500 text-white text-sm"
+                onClick={() => handleAnswerCall(incomingCall.callId, true)}
+                className="px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
               >
-                Join
+                Answer
               </button>
               <button
-                onClick={handleDeclineCall}
-                className="px-4 py-1.5 rounded-full bg-red-500 text-white text-sm"
+                onClick={() => handleAnswerCall(incomingCall.callId, false)}
+                className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
               >
                 Decline
               </button>
             </div>
           </div>
         </div>
-      }
+      )}
 
       {/* Messages Container - Adjust padding for mobile */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
