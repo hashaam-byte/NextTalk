@@ -185,25 +185,32 @@ model UserSettings {
   @@index([userId])
 }
 
-model Call {
-  id        String   @id @default(cuid())
-  type      String   // 'AUDIO' or 'VIDEO'
-  status    String   // 'ONGOING', 'ENDED', 'MISSED', 'REJECTED'
-  startTime DateTime @default(now())
-  endTime   DateTime?
-  duration  Int?     // in seconds
-  callerId  String
-  caller    User     @relation("OutgoingCalls", fields: [callerId], references: [id], onDelete: Cascade)
-  receiverId String
-  receiver  User     @relation("IncomingCalls", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  @@index([callerId])
-  @@index([receiverId])
-}
-
 enum MediaType {
   IMAGE
   VIDEO
   AUDIO
   DOCUMENT
+}
+
+enum CallStatus {
+  RINGING
+  ONGOING
+  ENDED
+  MISSED
+  NO_ANSWER
+}
+
+model Call {
+  id        String     @id @default(cuid())
+  type      String     // 'AUDIO' or 'VIDEO'
+  status    CallStatus @default(RINGING)
+  startTime DateTime?
+  endTime   DateTime?
+  callerId  String
+  caller    User       @relation("OutgoingCalls", fields: [callerId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver  User       @relation("IncomingCalls", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([callerId])
+  @@index([receiverId])
 }
