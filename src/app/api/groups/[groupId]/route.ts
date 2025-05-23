@@ -1,3 +1,8 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';  // Fixed import
+import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/authConfig';  // Make sure this path is correct
+
 export async function GET(req: Request, { params }: { params: { groupId: string } }) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,9 +21,18 @@ export async function GET(req: Request, { params }: { params: { groupId: string 
               select: {
                 id: true,
                 name: true,
-                profileImage: true
+                profileImage: true,
+                status: true,
+                lastSeen: true
               }
             }
+          }
+        },
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            profileImage: true
           }
         }
       }
