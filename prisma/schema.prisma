@@ -200,16 +200,25 @@ enum CallStatus {
   NO_ANSWER
 }
 
+enum NotificationType {
+  MESSAGE
+  CONTACT_REQUEST
+  GROUP_INVITE
+  CALL_INCOMING
+  CALL_MISSED
+}
+
 model Call {
-  id        String     @id @default(cuid())
-  type      String     // 'AUDIO' or 'VIDEO'
-  status    CallStatus @default(RINGING)
-  startTime DateTime?
-  endTime   DateTime?
-  callerId  String
-  caller    User       @relation("OutgoingCalls", fields: [callerId], references: [id], onDelete: Cascade)
-  receiverId String
-  receiver  User       @relation("IncomingCalls", fields: [receiverId], references: [id], onDelete: Cascade)
+  id          String      @id @default(cuid())
+  type        String      // 'AUDIO' or 'VIDEO'
+  status      CallStatus
+  startTime   DateTime?
+  endTime     DateTime?
+  callerId    String
+  receiverId  String
+  roomId      String      @unique // For WebRTC room identification
+  caller      User        @relation("OutgoingCalls", fields: [callerId], references: [id])
+  receiver    User        @relation("IncomingCalls", fields: [receiverId], references: [id])
 
   @@index([callerId])
   @@index([receiverId])

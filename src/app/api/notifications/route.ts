@@ -52,6 +52,45 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { type, callId, receiverId } = await req.json();
+
+    if (type === 'CALL_INCOMING') {
+      const call = await prisma.call.findUnique({
+        where: { id: callId },
+        include: {
+          caller: {
+            select: {
+              name: true,
+              image: true
+            }
+          }
+        }
+      });
+
+      if (!call) {
+        return NextResponse.json({ error: 'Call not found' }, { status: 404 });
+      }
+
+      // Create notification
+      const notification = await prisma.notification.create({
+        data: {
+          type: 'CALL_INCOMING',
+          content: `${call.caller.name} is calling you`,
+          userId: receiverId,
+          senderId: call.callerId,
+          callId: call.id
+        }
+      });
+
+      // Emit socket event
+      global.io?.to(receiverId).emit('call:incoming', {
+        notification,
+        call
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -102,7 +141,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ notifications });
   } catch (error) {
-    console.error('Error creating notification:', error);
-    return NextResponse.json({ error: 'Failed to create notification' }, { status: 500 });
+    console.error('[NOTIFICATIONS_POST]', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

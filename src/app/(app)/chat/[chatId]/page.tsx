@@ -45,6 +45,17 @@ interface ContactInfo {
   }[];
 }
 
+interface ActiveCall {
+  id: string;
+  type: 'audio' | 'video';
+  status: 'ringing' | 'ongoing';
+  callerId: string;
+  caller: {
+    name: string;
+    image?: string;
+  };
+}
+
 export default function ChatPage() {
   const { chatId } = useParams();
   const router = useRouter();
@@ -63,10 +74,7 @@ export default function ChatPage() {
   const [messageActionsPosition, setMessageActionsPosition] = useState({ x: 0, y: 0 });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [activeCall, setActiveCall] = useState<{
-    type: 'audio' | 'video';
-    isIncoming: boolean;
-  } | null>(null);
+  const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -521,6 +529,41 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+
+      {/* Active Call Notification - Shown when there's an active call */}
+      {activeCall && (
+        <div className="sticky top-16 z-20 p-3 bg-purple-500/10 backdrop-blur-sm border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                {activeCall.type === 'video' ? <Video size={16} /> : <Phone size={16} />}
+              </div>
+              <div>
+                <p className="text-sm text-white">
+                  {activeCall.caller.name} is calling...
+                </p>
+                <p className="text-xs text-gray-400">
+                  Ongoing {activeCall.type} call
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handleAnswerCall(true)} // Join with video by default
+                className="px-4 py-1.5 rounded-full bg-green-500 text-white text-sm"
+              >
+                Join
+              </button>
+              <button
+                onClick={handleDeclineCall}
+                className="px-4 py-1.5 rounded-full bg-red-500 text-white text-sm"
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      }
 
       {/* Messages Container - Adjust padding for mobile */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
