@@ -89,7 +89,6 @@ export async function POST(req: Request, { params }: { params: { groupId: string
               content: `${session.user.name} sent a message in ${group.name}`,
               userId: member.userId,
               senderId: session.user.id,
-              fromUserId: session.user.id,
               groupId: group.id,
               read: false
             }
