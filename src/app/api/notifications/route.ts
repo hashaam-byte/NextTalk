@@ -52,9 +52,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { type, callId, receiverId } = await req.json();
+    const requestData = await req.json();
+    const { recipientId, notificationType, callId } = requestData;
 
-    if (type === 'CALL_INCOMING') {
+    // Handle call notifications
+    if (notificationType === 'CALL_INCOMING') {
       const call = await prisma.call.findUnique({
         where: { id: callId },
         include: {
@@ -76,14 +78,14 @@ export async function POST(req: Request) {
         data: {
           type: 'CALL_INCOMING',
           content: `${call.caller.name} is calling you`,
-          userId: receiverId,
+          userId: recipientId,
           senderId: call.callerId,
           callId: call.id
         }
       });
 
       // Emit socket event
-      global.io?.to(receiverId).emit('call:incoming', {
+      global.io?.to(recipientId).emit('call:incoming', {
         notification,
         call
       });
@@ -91,55 +93,70 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const { groupId, content, type = 'GROUP_MESSAGE', timestamp } = await req.json();
-
-    // Get group info for notification content
-    const group = await prisma.group.findUnique({
-      where: { id: groupId },
-      select: { name: true }
-    });
-
-    if (!group) {
-      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
-    }
-
-    // Get group members excluding the sender
-    const groupMembers = await prisma.groupMember.findMany({
-      where: {
-        groupId,
-        userId: {
-          not: currentUser.id
+    // Handle group message notifications
+    if (notificationType === 'GROUP_MESSAGE') {
+      const { groupId, content, timestamp } = requestData;
+      
+      // Get group info for notification content
+      const group = await prisma.group.findUnique({
+        where: { id: groupId },
+        include: {
+          members: true
         }
+      });
+
+      if (!group) {
+        return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+      }
+
+      // Create notifications for all group members except sender
+      const notifications = await Promise.all(
+        group.members
+          .filter(member => member.id !== session.user.id)
+          .map(member =>
+            prisma.notification.create({
+              data: {
+                type: 'GROUP_MESSAGE',
+                content: `New message in ${group.name}: ${content}`,
+                userId: member.id,
+                senderId: session.user.id,
+                groupId
+              }
+            })
+          )
+      );
+
+      // Emit socket events to all members
+      group.members.forEach(member => {
+        if (member.id !== session.user.id) {
+          global.io?.to(member.id).emit('notification:new', {
+            type: 'GROUP_MESSAGE',
+            content: `New message in ${group.name}`,
+            sender: session.user,
+            groupId,
+            timestamp
+          });
+        }
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Handle regular message notifications
+    const notification = await prisma.notification.create({
+      data: {
+        type: notificationType,
+        content: requestData.content,
+        userId: recipientId,
+        senderId: session.user.id
       }
     });
 
-    // Create notifications for all group members
-    const notifications = await Promise.all(
-      groupMembers.map(member =>
-        prisma.notification.create({
-          data: {
-            userId: member.userId,
-            senderId: currentUser.id,
-            fromUserId: currentUser.id,
-            groupId,
-            type,
-            content: `${currentUser.name} sent a message in ${group.name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
-            createdAt: new Date(timestamp),
-            read: false
-          }
-        })
-      )
-    );
+    // Emit socket event
+    global.io?.to(recipientId).emit('notification:new', notification);
 
-    return NextResponse.json({ notifications });
+    return NextResponse.json({ success: true });
+
   } catch (error) {
     console.error('[NOTIFICATIONS_POST]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
