@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Book, Search, ArrowRight, ChevronRight, ExternalLink } from 'lucide-react';
+import { 
+  Book, 
+  Search, 
+  ArrowRight, 
+  ChevronRight, 
+  ExternalLink,
+  Mail,
+  Phone
+} from 'lucide-react';
 import Link from 'next/link';
 
 const docCategories = {
