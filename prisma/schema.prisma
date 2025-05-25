@@ -46,6 +46,8 @@ model User {
   blockedUsers          User[]           @relation("BlockedUsers")
   blockedBy             User[]           @relation("BlockedUsers")
   mutedChats            String[]         // Array of chat IDs that are muted
+  resetToken            String?         @db.Text
+  resetTokenExpiry      DateTime?
 }
 
 model Chat {

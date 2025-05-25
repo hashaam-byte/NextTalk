@@ -311,6 +311,18 @@ export default function AuthForm({ mode }: AuthFormProps) {
               'Create account'
             )}
           </button>
+
+          {/* Add Forgot Password Link - Only show on login mode */}
+          {mode === 'login' && (
+            <div className="text-center mt-4">
+              <Link 
+                href="/forgot-password" 
+                className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          )}
         </form>
 
         <div className="text-center text-sm text-gray-400">
