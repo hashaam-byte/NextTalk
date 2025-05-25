@@ -17,18 +17,31 @@ export async function POST(req: Request) {
     const visibility = formData.get('visibility') as string;
     const viewersIds = formData.get('viewersIds') as string;
 
-    // Upload media to Cloudinary
-    const mediaUrl = await uploadToCloudinary(media);
+    if (!media) {
+      return NextResponse.json({ error: 'No media file provided' }, { status: 400 });
+    }
 
-    // Create post in database
+    // Upload media to Cloudinary first
+    let mediaUrl;
+    try {
+      const buffer = await media.arrayBuffer();
+      const base64String = Buffer.from(buffer).toString('base64');
+      const dataURI = `data:${media.type};base64,${base64String}`;
+      mediaUrl = await uploadToCloudinary(dataURI);
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      return NextResponse.json({ error: 'Failed to upload media' }, { status: 500 });
+    }
+
+    // Create post with the mediaUrl
     const post = await prisma.post.create({
       data: {
-        mediaUrl,
-        caption,
+        mediaUrl, // Add this required field
+        caption: caption || null,
         mediaType: media.type.startsWith('video/') ? 'VIDEO' : 'IMAGE',
-        visibility,
+        visibility: visibility || 'public',
         viewersIds: viewersIds ? JSON.parse(viewersIds) : [],
-        userId: session.user.id,
+        userId: session.user.id
       },
       include: {
         user: {
