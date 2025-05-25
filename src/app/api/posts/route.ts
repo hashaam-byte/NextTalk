@@ -78,17 +78,23 @@ export async function GET(req: Request) {
       where: {
         OR: [
           { visibility: 'PUBLIC' },
-          { visibility: 'CONTACTS', userId: { in: user.contacts.map(c => c.id) } },
-          { visibility: 'PRIVATE', viewersIds: { has: user.id } },
-        ],
+          {
+            visibility: 'CONTACTS',
+            userId: { in: user.contacts.map(c => c.id) }
+          },
+          {
+            visibility: 'PRIVATE',
+            viewersIds: { has: user.id }
+          }
+        ]
       },
       include: {
         user: {
           select: {
             id: true,
             name: true,
-            image: true,
-          },
+            profileImage: true,  // Changed from image to profileImage
+          }
         },
         _count: {
           select: { likes: true }
