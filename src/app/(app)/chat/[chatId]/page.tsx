@@ -488,114 +488,116 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
-      {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center p-3 sm:p-4 border-b border-white/10 bg-black/20 backdrop-blur-md">
-        <button
-          onClick={() => router.back()}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
-        >
-          <ArrowLeft size={20} />
-        </button>
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+      {/* Fixed Chat Header */}
+      <div className="sticky top-0 z-30 bg-black/20 backdrop-blur-lg border-b border-white/10">
+        <div className="flex items-center p-3 sm:p-4">
+          <button
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
+          >
+            <ArrowLeft size={20} />
+          </button>
 
-        <div className="flex items-center flex-1 ml-2">
-          {/* Contact Info */}
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
-              {chatInfo?.avatar ? (
-                <Image
-                  src={chatInfo.avatar}
-                  alt={chatInfo.name || 'Contact'}
-                  width={40}
-                  height={40}
-                  className="object-cover w-full h-full"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-600/30 to-indigo-600/30">
-                  <span className="text-white font-medium">
-                    {chatInfo?.name?.[0] || '?'}
-                  </span>
-                </div>
-              )}
-            </div>
-            {chatInfo?.isOnline && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900" />
-            )}
-          </div>
-
-          <div className="ml-3 flex-1">
-            <h2 className="text-white font-medium">
-              {chatInfo?.name || 'Loading...'}
-            </h2>
-            <div className="flex items-center text-xs space-x-1">
-              <div className={`w-2 h-2 rounded-full ${
-                chatInfo?.isOnline 
-                  ? 'bg-green-500 animate-pulse' 
-                  : 'bg-gray-400'
-              }`} />
-              <span className={`${
-                chatInfo?.isOnline ? 'text-green-400' : 'text-gray-400'
-              }`}>
-                {chatInfo?.isOnline 
-                  ? 'Online' 
-                  : chatInfo?.lastSeen 
-                    ? formatLastSeen(chatInfo.lastSeen)
-                    : 'Offline'}
-              </span>
-              {chatInfo?.isTyping && (
-                <span className="text-purple-400 ml-1">• typing...</span>
-              )}
-              {chatInfo?.deviceType && (
-                <span className="text-gray-500 ml-1">
-                  • from {chatInfo.deviceType}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleStartCall('audio')}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
-            >
-              <Phone size={20} />
-            </button>
-            <button
-              onClick={() => handleStartCall('video')}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
-            >
-              <Video size={20} />
-            </button>
+          <div className="flex items-center flex-1 ml-2">
+            {/* Contact Info */}
             <div className="relative">
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
+                {chatInfo?.avatar ? (
+                  <Image
+                    src={chatInfo.avatar}
+                    alt={chatInfo.name || 'Contact'}
+                    width={40}
+                    height={40}
+                    className="object-cover w-full h-full"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-600/30 to-indigo-600/30">
+                    <span className="text-white font-medium">
+                      {chatInfo?.name?.[0] || '?'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {chatInfo?.isOnline && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900" />
+              )}
+            </div>
+
+            <div className="ml-3 flex-1">
+              <h2 className="text-white font-medium">
+                {chatInfo?.name || 'Loading...'}
+              </h2>
+              <div className="flex items-center text-xs space-x-1">
+                <div className={`w-2 h-2 rounded-full ${
+                  chatInfo?.isOnline 
+                    ? 'bg-green-500 animate-pulse' 
+                    : 'bg-gray-400'
+                }`} />
+                <span className={`${
+                  chatInfo?.isOnline ? 'text-green-400' : 'text-gray-400'
+                }`}>
+                  {chatInfo?.isOnline 
+                    ? 'Online' 
+                    : chatInfo?.lastSeen 
+                      ? formatLastSeen(chatInfo.lastSeen)
+                      : 'Offline'}
+                </span>
+                {chatInfo?.isTyping && (
+                  <span className="text-purple-400 ml-1">• typing...</span>
+                )}
+                {chatInfo?.deviceType && (
+                  <span className="text-gray-500 ml-1">
+                    • from {chatInfo.deviceType}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
               <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                onClick={() => handleStartCall('audio')}
                 className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
               >
-                <MoreVertical size={20} />
+                <Phone size={20} />
               </button>
+              <button
+                onClick={() => handleStartCall('video')}
+                className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
+              >
+                <Video size={20} />
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
+                >
+                  <MoreVertical size={20} />
+                </button>
 
-              <AnimatePresence>
-                {isMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute right-0 mt-2 w-56 bg-gray-900/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/10"
-                  >
-                    <div className="p-1">
-                      <button
-                        onClick={() => {
-                          setShowContactInfo(true);
-                          setIsMenuOpen(false);
-                        }}
-                        className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
-                      >
-                        View Contact
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <AnimatePresence>
+                  {isMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-56 bg-gray-900/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/10"
+                    >
+                      <div className="p-1">
+                        <button
+                          onClick={() => {
+                            setShowContactInfo(true);
+                            setIsMenuOpen(false);
+                          }}
+                          className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
+                        >
+                          View Contact
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
@@ -632,8 +634,8 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Messages Container - Adjust padding for mobile */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
+      {/* Scrollable Messages Container */}
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4">
         <div className="flex flex-col min-h-0">
           {Array.isArray(messages) && messages.map((msg, index) => {
             const isMine = msg.senderId === session?.user?.id;
@@ -689,6 +691,55 @@ export default function ChatPage() {
           })}
           <div ref={messagesEndRef} />
         </div>
+      </div>
+
+      {/* Fixed Bottom Input Section */}
+      <div className="sticky bottom-0 z-30 bg-black/20 backdrop-blur-lg border-t border-white/10 p-3 sm:p-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendMessage();
+          }}
+          className="flex items-center space-x-2"
+        >
+          {/* Emoji Picker */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400"
+            >
+              <Smile size={20} />
+            </button>
+            {showEmojiPicker && (
+              <div className="absolute bottom-full mb-2 left-0">
+                <EmojiPicker
+                  onEmojiSelect={handleEmojiSelect}
+                  isOpen={showEmojiPicker}
+                  onClose={() => setShowEmojiPicker(false)}
+                />
+              </div>
+            )}
+          </div>
+          
+          {/* Message Input */}
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
+          />
+          
+          {/* Send Button */}
+          <button
+            type="submit"
+            disabled={!message.trim()}
+            className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-50"
+          >
+            <Send size={20} />
+          </button>
+        </form>
       </div>
 
       {/* Message Actions Menu */}
@@ -781,52 +832,6 @@ export default function ChatPage() {
           />
         )}
       </AnimatePresence>
-
-      {/* Input - Adjust padding and spacing for mobile */}
-      <div className="sticky bottom-0 z-20 p-3 sm:p-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage();
-          }}
-          className="flex items-center space-x-2"
-        >
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400"
-            >
-              <Smile size={20} />
-            </button>
-            {showEmojiPicker && (
-              <div className="absolute bottom-12 left-0">
-                <EmojiPicker
-                  onEmojiSelect={handleEmojiSelect}
-                  isOpen={showEmojiPicker}
-                  onClose={() => setShowEmojiPicker(false)}
-                />
-              </div>
-            )}
-          </div>
-          
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
-          />
-          
-          <button
-            type="submit"
-            disabled={!message.trim()}
-            className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-50"
-          >
-            <Send size={20} />
-          </button>
-        </form>
-      </div>
     </div>
   );
 }
