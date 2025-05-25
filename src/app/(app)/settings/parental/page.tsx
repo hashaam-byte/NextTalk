@@ -104,7 +104,7 @@ export default function ParentalControlPage() {
           <AlertTriangle className="mx-auto mb-4 text-yellow-400" size={32} />
           <h2 className="text-xl font-semibold text-white mb-2">Coming Soon</h2>
           <p className="text-gray-300 mb-4">
-            These features are currently in development and will be available in Q3 2024.
+            These features are currently in development and will be available in Q3 2025.
           </p>
           <button
             className="px-6 py-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition-colors"

@@ -6,8 +6,9 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { 
   Bell, Lock, Moon, Sun, Palette, Globe, 
-  Volume2, Shield, HelpCircle, Save, Camera
+  Volume2, Shield, HelpCircle, Save, Camera, Users
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface UserSettings {
   profile: {
@@ -60,7 +61,7 @@ export default function SettingsPage() {
   const [privacyLevel, setPrivacyLevel] = useState('Friends only');
   const [selectedTab, setSelectedTab] = useState('General');
 
-  const tabs = ['General', 'Appearance', 'Notifications', 'Privacy', 'Help'];
+  const tabs = ['General', 'Appearance', 'Notifications', 'Privacy', 'Parental Controls', 'Help'];
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -592,6 +593,52 @@ export default function SettingsPage() {
           </div>
         );
       
+      case 'Parental Controls':
+        return (
+          <div className="animate-fadeIn">
+            <h2 className="text-xl font-semibold text-white mb-6">Parental Controls</h2>
+            
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <Shield size={24} className="text-purple-400 mr-3" />
+                  <div>
+                    <h3 className="text-lg font-medium text-white">Parental Control Settings</h3>
+                    <p className="text-sm text-gray-400">Manage and monitor app usage</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <Link
+                  href="/settings/parental"
+                  className="block p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-white font-medium mb-1">Configure Parental Controls</h4>
+                      <p className="text-sm text-gray-400">Set up content filters, screen time limits, and monitoring</p>
+                    </div>
+                    <div className="text-gray-400">&rarr;</div>
+                  </div>
+                </Link>
+
+                {/* Quick Settings Preview */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                    <h5 className="text-sm font-medium text-gray-400 mb-2">Screen Time</h5>
+                    <p className="text-white">60 minutes/day</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                    <h5 className="text-sm font-medium text-gray-400 mb-2">Content Filter</h5>
+                    <p className="text-white">Strict</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       case 'Help':
         return (
           <div className="animate-fadeIn">
@@ -767,6 +814,7 @@ export default function SettingsPage() {
                     {tab === 'Appearance' && <Palette size={16} className="mr-2" />}
                     {tab === 'Notifications' && <Bell size={16} className="mr-2" />}
                     {tab === 'Privacy' && <Lock size={16} className="mr-2" />}
+                    {tab === 'Parental Controls' && <Shield size={16} className="mr-2" />}
                     {tab === 'Help' && <HelpCircle size={16} className="mr-2" />}
                     {tab}
                   </motion.button>

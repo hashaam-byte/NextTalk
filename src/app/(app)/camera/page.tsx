@@ -279,58 +279,28 @@ export default function CameraPage() {
     alert('Sharing functionality would be implemented here!');
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      // Handle file preview
-      const url = URL.createObjectURL(file);
-      if (file.type.startsWith('image/')) {
-        setCapturedImage(url);
-      } else if (file.type.startsWith('video/')) {
-        setCapturedVideo(url);
-      }
-    }
-  };
-
-  const handlePost = async (mediaFile: File | null, caption: string) => {
-    if (!mediaFile) return;
-
-    const formData = new FormData();
-    formData.append('media', mediaFile);
-    formData.append('caption', caption);
-    formData.append('mediaType', mediaFile.type.startsWith('video') ? 'VIDEO' : 'IMAGE');
-
+  const handleFileUpload = async (file: File) => {
     try {
+      const formData = new FormData();
+      formData.append('media', file);
+      formData.append('mediaType', file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE');
+      formData.append('visibility', 'PUBLIC'); // or let user choose
+
       const response = await fetch('/api/posts', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create post');
-      }
-
-      router.push('/videos');
+      if (!response.ok) throw new Error('Upload failed');
+      
+      router.push('/reels');
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Upload error:', error);
     }
   };
 
-  const handleGooglePhotos = async () => {
-    // Request permission to access Google Photos
-    const scope = 'https://www.googleapis.com/auth/photoslibrary.readonly';
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin)}/auth/callback&response_type=code&scope=${scope}&access_type=offline`;
-    
-    window.location.href = googleAuthUrl;
-  };
-
-  const applyFilter = (video: HTMLVideoElement, canvas: HTMLCanvasElement) => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.filter = selectedFilter;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const openGallery = () => {
+    fileInputRef.current?.click();
   };
 
   if (status === 'loading') {
@@ -551,6 +521,27 @@ export default function CameraPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Add gallery upload option */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFileUpload(file);
+        }}
+      />
+
+      <div className="fixed bottom-6 right-6">
+        <button
+          onClick={openGallery}
+          className="p-3 bg-purple-600 rounded-full text-white"
+        >
+          <ImageIcon size={24} />
+        </button>
       </div>
     </div>
   );
