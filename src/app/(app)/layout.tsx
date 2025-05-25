@@ -15,6 +15,12 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   const pathname = usePathname();
   const [isMobile, setIsMobile] = useState(false);
+
+  // Check if current route should show mobile navigation
+  const showMobileNav = pathname.startsWith('/chat') || 
+                       pathname.startsWith('/groups') || 
+                       pathname.startsWith('/videos') || 
+                       pathname.startsWith('/camera');
   
   useEffect(() => {
     const checkScreenSize = () => {
@@ -62,6 +68,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   {!isAuthPage && <Navbar />}
                   {children}
                 </main>
+
+                {/* Show Sidebar as bottom nav on mobile */}
+                {isMobile && showMobileNav && <Sidebar />}
               </div>
             </SocketProvider>
           </AuthProvider>

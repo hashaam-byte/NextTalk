@@ -16,6 +16,12 @@ export default function Sidebar() {
   const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Check if current route should show mobile navigation
+  const showMobileNav = pathname.startsWith('/chat') || 
+                       pathname.startsWith('/groups') || 
+                       pathname.startsWith('/videos') || 
+                       pathname.startsWith('/camera');
+  
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -49,25 +55,38 @@ export default function Sidebar() {
     return pathname === path;
   };
   
-  // Bottom mobile navigation
-  if (isMobile) {
+  // Early return for mobile navigation
+  if (isMobile && showMobileNav) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 bg-black/50 backdrop-blur-lg border-t border-white/10 z-10">
-        <div className="flex justify-around py-2">
-          {navItems.slice(0, 5).map((item) => (
-            <Link 
-              key={item.path} 
-              href={item.path} 
-              className={`flex flex-col items-center p-2 rounded-lg transition-all ${
-                checkActive(item.path) 
-                  ? 'text-purple-400 bg-white/5' 
-                  : 'text-gray-400 hover:text-purple-300 hover:bg-white/5'
-              }`}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-xs mt-1">{item.name}</span>
-            </Link>
-          ))}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-around py-2">
+            { [
+                { icon: MessageSquare, label: 'Chats', path: '/chat' },
+                { icon: Users, label: 'Groups', path: '/groups' },
+                { icon: Video, label: 'Videos', path: '/videos' },
+                { icon: Camera, label: 'Camera', path: '/camera' }
+              ].map((item) => (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`flex flex-col items-center p-2 rounded-xl transition-all ${
+                  pathname.startsWith(item.path)
+                    ? 'text-purple-400 bg-white/10'
+                    : 'text-gray-400 hover:text-purple-400'
+                }`}
+              >
+                <item.icon size={24} className="mb-1" />
+                <span className="text-xs">{item.label}</span>
+                {pathname.startsWith(item.path) && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-500"
+                  />
+                )}
+              </Link>
+            )) }
+          </div>
         </div>
       </div>
     );
