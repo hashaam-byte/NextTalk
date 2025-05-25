@@ -45,8 +45,8 @@ model User {
   incomingCalls         Call[]           @relation("incomingCalls")
   blockedUsers          User[]           @relation("BlockedUsers")
   blockedBy             User[]           @relation("BlockedUsers")
-  mutedChats            String[]         // Array of chat IDs that are muted
-  resetToken            String?         @db.Text
+  mutedChats            String[] // Array of chat IDs that are muted
+  resetToken            String?          @db.Text
   resetTokenExpiry      DateTime?
 }
 
@@ -103,9 +103,9 @@ model Notification {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User    @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  sender  User?   @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
-  group   Group?  @relation("GroupNotifications", fields: [groupId], references: [id], onDelete: Cascade)
+  user   User   @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sender User?  @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  group  Group? @relation("GroupNotifications", fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([senderId])
@@ -125,31 +125,31 @@ model ContactRequest {
 }
 
 model Group {
-  id          String         @id @default(cuid())
-  name        String
-  description String?
-  bio         String?        // Add this field
-  avatar      String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  createdBy   String
-  owner       User          @relation("GroupOwner", fields: [createdBy], references: [id])
-  members     GroupMember[]
-  messages    GroupMessage[]
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  bio           String? // Add this field
+  avatar        String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  createdBy     String
+  owner         User           @relation("GroupOwner", fields: [createdBy], references: [id])
+  members       GroupMember[]
+  messages      GroupMessage[]
   notifications Notification[] @relation("GroupNotifications")
-  isPublic    Boolean       @default(false)
+  isPublic      Boolean        @default(false)
 
   @@index([createdBy])
 }
 
 model GroupMember {
-  id        String   @id @default(cuid())
-  groupId   String
-  userId    String
-  role      String   @default("MEMBER")
-  joinedAt  DateTime @default(now())
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String   @default("MEMBER")
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
   @@index([groupId])
@@ -208,20 +208,23 @@ enum CallType {
 }
 
 model Call {
-  id         String     @id @default(cuid())
-  type       CallType
-  status     CallStatus
-  roomId     String     @unique
-  startTime  DateTime?
-  endTime    DateTime?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id         String    @id @default(cuid())
+  type       String // 'audio' or 'video'
+  status     String // 'ringing', 'ongoing', 'ended', 'declined'
+  roomId     String
+  startedAt  DateTime  @default(now())
+  answeredAt DateTime?
+  endedAt    DateTime?
+  duration   Int? // in seconds
+  createdAt  DateTime  @default(now())
 
-  // Relations
-  callerId   String
-  caller     User       @relation("outgoingCalls", fields: [callerId], references: [id])
-  receiverId String  
-  receiver   User       @relation("incomingCalls", fields: [receiverId], references: [id])
+  // Caller relationship
+  caller   User   @relation("outgoingCalls", fields: [callerId], references: [id])
+  callerId String
+
+  // Receiver relationship
+  receiver   User   @relation("incomingCalls", fields: [receiverId], references: [id])
+  receiverId String
 
   @@index([callerId])
   @@index([receiverId])

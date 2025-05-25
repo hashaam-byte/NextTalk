@@ -248,6 +248,7 @@ export default function ChatPage() {
     // Handle incoming call
     global.io.on('call:incoming', (data: CallNotification) => {
       setIncomingCall(data);
+      // Play ringtone
       const audio = new Audio('/sounds/ringtone.mp3');
       audio.loop = true;
       audio.play().catch(console.error);
@@ -255,50 +256,31 @@ export default function ChatPage() {
 
     // Handle call accepted
     global.io.on('call:accepted', (data: { callId: string; startTime: Date }) => {
-      // Stop ringtone
-      const audioElements = document.getElementsByTagName('audio');
-      Array.from(audioElements).forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
-      });
-
       setActiveCall(prev => prev ? {
         ...prev,
         status: 'ongoing',
         startTime: new Date(data.startTime)
       } : null);
-    });
-
-    // Handle call ended
-    global.io.on('call:ended', (data: { callId: string }) => {
-      // Stop ringtone
+      
+      // Stop ringtone if playing
       const audioElements = document.getElementsByTagName('audio');
-      Array.from(audioElements).forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
-      });
-
-      setActiveCall(prev => prev ? { ...prev, status: 'ended' } : null);
-      setTimeout(() => setActiveCall(null), 2000);
+      Array.from(audioElements).forEach(audio => audio.pause());
     });
 
+    // Handle call rejected/ended
     global.io.on('call:rejected', () => {
       setActiveCall(null);
-      // Stop ringtone
+      // Stop ringtone if playing
       const audioElements = document.getElementsByTagName('audio');
-      Array.from(audioElements).forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
-      });
+      Array.from(audioElements).forEach(audio => audio.pause());
     });
 
     return () => {
       global.io?.off('call:incoming');
       global.io?.off('call:accepted');
-      global.io?.off('call:ended');
       global.io?.off('call:rejected');
     };
-  }, [chatId]);
+  }, []);
 
   const sendMessage = async () => {
     if (!message.trim()) return;
@@ -420,36 +402,31 @@ export default function ChatPage() {
       const data = await response.json();
       if (response.ok) {
         setActiveCall({
-          id: data.id,
+          id: data.call.id,
           type,
-          status: 'ringing',
-          startTime: new Date()
+          status: 'ringing'
         });
-
-        // Start playing ringtone for caller
-        const audio = new Audio('/sounds/outgoing-ring.mp3');
-        audio.loop = true;
-        audio.play().catch(console.error);
       }
     } catch (error) {
       console.error('Error starting call:', error);
     }
   };
 
-  const handleAnswerCall = async (callId: string, accepted: boolean) => {
+  const handleAnswerCall = async (accepted: boolean) => {
+    if (!incomingCall?.callId) return;
+
     try {
-      await fetch(`/api/calls/${callId}/answer`, {
+      await fetch(`/api/calls/${incomingCall.callId}/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accepted })
       });
 
-      if (accepted && incomingCall) {
+      if (accepted) {
         setActiveCall({
-          id: callId,
+          id: incomingCall.callId,
           type: incomingCall.type,
-          status: 'ongoing',
-          startTime: new Date()
+          status: 'ongoing'
         });
       }
       setIncomingCall(null);
@@ -639,13 +616,13 @@ export default function ChatPage() {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => handleAnswerCall(incomingCall.callId, true)}
+                onClick={() => handleAnswerCall(true)}
                 className="px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
               >
                 Answer
               </button>
               <button
-                onClick={() => handleAnswerCall(incomingCall.callId, false)}
+                onClick={() => handleAnswerCall(false)}
                 className="px-4 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
               >
                 Decline
