@@ -190,6 +190,22 @@ model UserSettings {
   @@index([userId])
 }
 
+model Post {
+  id          String      @id @default(cuid())
+  mediaUrl    String
+  mediaType   String      
+  caption     String?
+  userId      String
+  viewedBy    String[]    
+  likes       Like[]
+  comments    Comment[]   // Add this line to complete the relation
+  viewersIds  String[]    
+  createdAt   DateTime    @default(now())
+  user        User        @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 enum MediaType {
   IMAGE
   VIDEO
@@ -231,23 +247,6 @@ model Call {
 
   @@index([callerId])
   @@index([receiverId])
-}
-
-model Post {
-  id          String    @id @default(cuid())
-  caption     String?
-  mediaUrl    String
-  mediaType   MediaType
-  userId      String
-  user        User      @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
-  likes       Like[]
-  comments    Comment[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  isPublic    Boolean   @default(true)
-  tags        String[]
-
-  @@index([userId])
 }
 
 model Like {

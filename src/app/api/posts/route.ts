@@ -14,7 +14,8 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const media = formData.get('media') as File;
     const caption = formData.get('caption') as string;
-    const mediaType = formData.get('mediaType') as string;
+    const visibility = formData.get('visibility') as string;
+    const viewersIds = formData.get('viewersIds') as string;
 
     // Convert file to base64
     const buffer = await media.arrayBuffer();
@@ -24,12 +25,14 @@ export async function POST(req: Request) {
     // Upload to Cloudinary
     const mediaUrl = await uploadToCloudinary(dataURI);
 
-    // Create post in database
+    // Create post
     const post = await prisma.post.create({
       data: {
-        caption,
         mediaUrl,
-        mediaType: mediaType.toUpperCase(),
+        caption,
+        mediaType: media.type.startsWith('video') ? 'VIDEO' : 'IMAGE',
+        visibility,
+        viewersIds: viewersIds ? JSON.parse(viewersIds) : [],
         userId: session.user.id,
       },
       include: {
@@ -37,7 +40,7 @@ export async function POST(req: Request) {
           select: {
             id: true,
             name: true,
-            profileImage: true,
+            image: true,
           },
         },
       },
@@ -57,36 +60,44 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const cursor = searchParams.get('cursor');
-    const limit = 10;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, contacts: { select: { id: true } } }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
     const posts = await prisma.post.findMany({
-      take: limit,
-      skip: cursor ? 1 : 0,
-      cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { createdAt: 'desc' },
+      where: {
+        OR: [
+          { visibility: 'PUBLIC' },
+          { visibility: 'CONTACTS', userId: { in: user.contacts.map(c => c.id) } },
+          { visibility: 'PRIVATE', viewersIds: { has: user.id } },
+        ],
+      },
       include: {
         user: {
           select: {
             id: true,
             name: true,
-            profileImage: true,
+            image: true,
           },
         },
         _count: {
-          select: {
-            likes: true,
-            comments: true,
-          },
-        },
+          select: { likes: true }
+        }
       },
+      orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json({
-      posts,
-      nextCursor: posts[limit - 1]?.id,
-    });
+    return NextResponse.json({ posts });
   } catch (error) {
     console.error('[POSTS_GET]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
