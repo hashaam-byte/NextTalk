@@ -488,6 +488,21 @@ export default function Home() {
                 icon: "👥",
                 title: "Community Features",
                 description: "Create and join communities to connect with larger groups and organizations."
+              },
+              {
+                icon: "📡",
+                title: "Offline Messaging",
+                description: "Stay connected even without internet. Messages sync automatically when you're back online."
+              },
+              {
+                icon: "👨‍👩‍👧‍👦",
+                title: "Family Safety",
+                description: "Set screen time limits, monitor activity, and keep your children safe with advanced parental controls."
+              },
+              {
+                icon: "📊",
+                title: "Usage Analytics",
+                description: "Get detailed insights into app usage patterns and activity with comprehensive reports."
               }
             ].map((feature, i) => (
               <motion.div
