@@ -56,6 +56,7 @@ export default function Sidebar() {
         <div className="container mx-auto">
           <div className="flex items-center justify-around py-2">
             { [
+                { icon: Home, label: 'Home', path: '/home' },
                 { icon: MessageSquare, label: 'Chats', path: '/chat' },
                 { icon: Users, label: 'Groups', path: '/groups' },
                 { icon: Video, label: 'Videos', path: '/videos' },

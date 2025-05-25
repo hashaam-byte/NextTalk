@@ -46,3 +46,20 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+  .content-wrapper {
+    margin-bottom: 4rem; /* Height of mobile navigation */
+  }
+
+  /* Ensure scrollable areas don't go under the mobile nav */
+  .overflow-y-auto {
+    padding-bottom: 4rem;
+  }
+
+  /* Adjust fixed elements to not conflict with mobile nav */
+  .fixed.bottom-0:not(.mobile-nav) {
+    bottom: 4rem;
+  }
+}

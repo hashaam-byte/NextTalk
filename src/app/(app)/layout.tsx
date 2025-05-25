@@ -33,12 +33,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html lang="en">
-      <head>
-        <title>NextTalkWeb - Modern Chat Application</title>
-        <meta name="description" content="A modern chat application built with Next.js" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="icon" href="/favicon.ico" />
-      </head>
       <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black">
         <SessionProvider> 
           <AuthProvider>
@@ -62,6 +56,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   <div className="flex-1 overflow-y-auto">
                     {children}
                   </div>
+                  {/* Add bottom padding on mobile to prevent content from being hidden */}
+                  {isMobile && <div className="h-16" />}
                 </main>
 
                 {/* Show Sidebar as bottom nav on mobile */}
