@@ -37,7 +37,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <SessionProvider> 
           <AuthProvider>
             <SocketProvider>
-              <div className="relative min-h-screen flex overflow-x-hidden">
+              <div className="relative min-h-screen flex">
                 {/* Background elements for futuristic design */}
                 <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
                   {/* Gradient blobs */}
@@ -51,15 +51,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 
                 {/* Desktop Sidebar - Fixed position */}
                 {!isAuthPage && !isMobile && (
-                  <div className="fixed left-0 top-0 h-screen">
+                  <div className="sticky top-0 h-screen flex-shrink-0">
                     <Sidebar />
                   </div>
                 )}
                 
-                {/* Main Content - Add left margin on desktop */}
-                <main className={`flex-1 flex flex-col w-full ${isMobile ? 'pb-20' : 'ml-20'}`}>
+                {/* Main Content */}
+                <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isMobile ? 'pb-20' : ''}`}>
                   {!isAuthPage && <Navbar />}
-                  <div className="flex-1 overflow-y-auto w-full">
+                  <div className="flex-1 overflow-y-auto">
                     {children}
                   </div>
                 </main>
