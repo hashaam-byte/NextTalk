@@ -17,20 +17,15 @@ export async function POST(req: Request) {
     const visibility = formData.get('visibility') as string;
     const viewersIds = formData.get('viewersIds') as string;
 
-    // Convert file to base64
-    const buffer = await media.arrayBuffer();
-    const base64String = Buffer.from(buffer).toString('base64');
-    const dataURI = `data:${media.type};base64,${base64String}`;
+    // Upload media to Cloudinary
+    const mediaUrl = await uploadToCloudinary(media);
 
-    // Upload to Cloudinary
-    const mediaUrl = await uploadToCloudinary(dataURI);
-
-    // Create post
+    // Create post in database
     const post = await prisma.post.create({
       data: {
         mediaUrl,
         caption,
-        mediaType: media.type.startsWith('video') ? 'VIDEO' : 'IMAGE',
+        mediaType: media.type.startsWith('video/') ? 'VIDEO' : 'IMAGE',
         visibility,
         viewersIds: viewersIds ? JSON.parse(viewersIds) : [],
         userId: session.user.id,
@@ -40,7 +35,7 @@ export async function POST(req: Request) {
           select: {
             id: true,
             name: true,
-            image: true,
+            profileImage: true,
           },
         },
       },

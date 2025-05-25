@@ -30,22 +30,19 @@ export default function CameraPage() {
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [selectedFilter, setSelectedFilter] = useState('none');
   const [filterMode, setFilterMode] = useState<'effect' | 'basic'>('effect');
-  const [mode, setMode] = useState<'photo' | 'video'>('photo');
+  const [mediaMode, setMediaMode] = useState<'photo' | 'video' | 'upload'>('photo');
   const [isRecording, setIsRecording] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [cameraPermission, setCameraPermission] = useState<boolean | 'pending'>('pending');
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedVideo, setCapturedVideo] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [caption, setCaption] = useState('');
-  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('friends');
-  const [category, setCategory] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [uploadedMedia, setUploadedMedia] = useState<File | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimeRef = useRef<number>(0);
   const [recordingTime, setRecordingTime] = useState<string>('00:00');
@@ -89,20 +86,19 @@ export default function CameraPage() {
 
   const initCamera = async () => {
     try {
-      const constraints = {
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
-        audio: false
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        audio: mediaMode === 'video'
+      });
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        setCameraPermission(true);
       }
-      setCameraPermission(true);
     } catch (error) {
       console.error('Error initializing camera:', error);
       setCameraPermission(false);
@@ -279,28 +275,41 @@ export default function CameraPage() {
     alert('Sharing functionality would be implemented here!');
   };
 
-  const handleFileUpload = async (file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('media', file);
-      formData.append('mediaType', file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE');
-      formData.append('visibility', 'PUBLIC'); // or let user choose
+  const handleFileUpload = (file: File) => {
+    setUploadedMedia(file);
+  };
 
+  const handleGooglePhotos = async () => {
+    // Google Photos API scope
+    const scope = 'https://www.googleapis.com/auth/photoslibrary.readonly';
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    
+    // Redirect to Google auth
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin)}/auth/callback&response_type=code&scope=${scope}&access_type=offline`;
+    
+    window.location.href = authUrl;
+  };
+
+  const handlePost = async () => {
+    if (!uploadedMedia) return;
+
+    const formData = new FormData();
+    formData.append('media', uploadedMedia);
+    formData.append('type', mediaMode);
+    formData.append('visibility', 'public'); // or let user choose
+
+    try {
       const response = await fetch('/api/posts', {
         method: 'POST',
         body: formData
       });
 
-      if (!response.ok) throw new Error('Upload failed');
-      
-      router.push('/reels');
+      if (response.ok) {
+        router.push('/reels');
+      }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Error creating post:', error);
     }
-  };
-
-  const openGallery = () => {
-    fileInputRef.current?.click();
   };
 
   if (status === 'loading') {
@@ -308,241 +317,125 @@ export default function CameraPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 overflow-y-auto">
-      {/* Background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute bottom-1/3 -right-20 w-80 h-80 bg-cyan-600/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute top-3/4 left-1/3 w-40 h-40 bg-indigo-600/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4">
+      {/* Mode Selection */}
+      <div className="mb-4 flex justify-center space-x-4">
+        <button
+          onClick={() => setMediaMode('photo')}
+          className={`px-4 py-2 rounded-full ${
+            mediaMode === 'photo' ? 'bg-purple-600' : 'bg-white/10'
+          }`}
+        >
+          Photo
+        </button>
+        <button
+          onClick={() => setMediaMode('video')}
+          className={`px-4 py-2 rounded-full ${
+            mediaMode === 'video' ? 'bg-purple-600' : 'bg-white/10'
+          }`}
+        >
+          Video
+        </button>
+        <button
+          onClick={() => setMediaMode('upload')}
+          className={`px-4 py-2 rounded-full ${
+            mediaMode === 'upload' ? 'bg-purple-600' : 'bg-white/10'
+          }`}
+        >
+          Upload
+        </button>
       </div>
 
-      <div className="relative z-10 flex flex-col min-h-full">
-        {permissionState === 'prompt' ? (
-          <div className="flex h-screen items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
-            <div className="text-center p-8 bg-black/30 backdrop-blur-lg rounded-2xl border border-white/10 max-w-md mx-4">
-              <div className="mb-6 w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto">
-                <Camera size={32} className="text-purple-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-4">Camera Access Required</h2>
-              <p className="text-gray-300 mb-6">
-                NexTalk needs access to your camera for photos and video calls. 
-                Would you like to allow camera access?
-              </p>
-              <div className="flex space-x-4 justify-center">
-                <button
-                  onClick={() => requestCameraPermission()}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl flex items-center"
-                >
-                  <CheckCircle2 size={18} className="mr-2" />
-                  Allow Access
-                </button>
-                <button
-                  onClick={() => setPermissionState('denied')}
-                  className="px-6 py-3 bg-gray-800 text-gray-300 rounded-xl flex items-center"
-                >
-                  <XCircle size={18} className="mr-2" />
-                  Deny
-                </button>
-              </div>
+      {/* Camera/Video Preview */}
+      {(mediaMode === 'photo' || mediaMode === 'video') && (
+        <div className="relative aspect-[9/16] max-w-md mx-auto rounded-xl overflow-hidden">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover"
+          />
+          
+          {/* Recording indicator */}
+          {isRecording && (
+            <div className="absolute top-4 left-4 bg-red-500 px-2 py-1 rounded-full text-sm">
+              {recordingDuration}s
             </div>
-          </div>
-        ) : permissionState === 'denied' ? (
-          <div className="flex h-screen items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
-            <div className="text-center p-8 bg-black/30 backdrop-blur-lg rounded-2xl border border-white/10 max-w-md mx-4">
-              <div className="mb-6 w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto">
-                <AlertCircle size={32} className="text-red-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-4">Camera Access Denied</h2>
-              <p className="text-gray-300 mb-6">
-                Camera access is required to use this feature. Please enable camera access in your browser settings and reload the page.
-              </p>
+          )}
+          
+          {/* Capture Controls */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-4">
+            {mediaMode === 'photo' ? (
               <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl"
-              >
-                Reload Page
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 p-4 flex flex-col items-center">
-            {/* Camera Preview Container */}
-            <div className="w-full max-w-2xl mx-auto mb-6">
-              <div className="relative aspect-[9/16] rounded-3xl overflow-hidden bg-black shadow-2xl border border-white/10">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="absolute inset-0 w-full h-full object-cover mirror"
-                />
-                {selectedFilter !== 'none' && (
-                  <div 
-                    className="absolute inset-0"
-                    style={{ filter: selectedFilter }}
-                  />
-                )}
-                {filterMode === 'ar' && (
-                  <canvas
-                    ref={messagesEndRef}
-                    className="absolute inset-0 w-full h-full"
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Controls Section */}
-            <div className="w-full max-w-md mx-auto bg-black/30 backdrop-blur-md rounded-2xl p-4 mb-6">
-              {/* Filter Mode Toggle */}
-              <div className="flex justify-center mb-4">
-                <div className="bg-black/40 rounded-full p-1 flex space-x-2">
-                  <button
-                    onClick={() => setFilterMode('effect')}
-                    className={`px-4 py-2 rounded-full transition ${
-                      filterMode === 'effect'
-                        ? 'bg-purple-600 text-white'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    Effects
-                  </button>
-                  <button
-                    onClick={() => setFilterMode('ar')}
-                    className={`px-4 py-2 rounded-full transition ${
-                      filterMode === 'ar'
-                        ? 'bg-purple-600 text-white'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    AR Filters
-                  </button>
-                </div>
-              </div>
-
-              {/* Filters Grid */}
-              <div className="grid grid-cols-4 gap-3">
-                {filterMode === 'effect' ? (
-                  filterOptions.map((filter) => (
-                    <button
-                      key={filter.value}
-                      onClick={() => setSelectedFilter(filter.value)}
-                      className={`p-3 rounded-xl border ${
-                        selectedFilter === filter.value
-                          ? 'border-purple-500 bg-purple-500/20'
-                          : 'border-white/10 bg-white/5'
-                      }`}
-                    >
-                      <span className="text-sm text-white">
-                        {filter.name}
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  ['dogears', 'glasses', 'crown', 'bunny', 'heart', 'mustache'].map((filter) => (
-                    <button
-                      key={filter}
-                      onClick={() => setSelectedARFilter(filter)}
-                      className={`p-3 rounded-xl border ${
-                        selectedARFilter === filter
-                          ? 'border-purple-500 bg-purple-500/20'
-                          : 'border-white/10 bg-white/5'
-                      }`}
-                    >
-                      <span className="text-sm text-white capitalize">
-                        {filter}
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Camera Controls */}
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center justify-center space-x-6">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleCamera}
-                className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 text-gray-200"
-              >
-                <RotateCcw size={24} />
-              </motion.button>
-              
-              {mode === 'photo' ? (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={takePhoto}
-                  className="p-5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full relative"
-                >
-                  <div className="absolute inset-0 bg-white opacity-20 rounded-full scale-125 animate-ping"></div>
-                  <CameraIcon size={28} className="text-white" />
-                </motion.button>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleRecordingButton}
-                  className={`p-5 rounded-full relative ${
-                    isRecording
-                      ? 'bg-red-600'
-                      : 'bg-gradient-to-r from-purple-600 to-indigo-600'
-                  }`}
-                >
-                  {isRecording && (
-                    <div className="absolute inset-0 bg-red-500 opacity-20 rounded-full scale-125 animate-ping"></div>
-                  )}
-                  {isRecording ? (
-                    <X size={28} className="text-white" />
-                  ) : (
-                    <Video size={28} className="text-white" />
-                  )}
-                </motion.button>
-              )}
-              
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 text-gray-200"
-              >
-                <ImageIcon size={24} />
-              </motion.button>
-            </div>
-
-            {/* AR Filter Component */}
-            {filterMode === 'ar' && (
-              <ARFilter
-                filterId={selectedARFilter}
-                videoRef={videoRef}
-                canvasRef={messagesEndRef}
-                isActive={filterMode === 'ar'}
+                onClick={takePhoto}
+                className="w-16 h-16 rounded-full bg-white"
+              />
+            ) : (
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`w-16 h-16 rounded-full ${
+                  isRecording ? 'bg-red-500' : 'bg-white'
+                }`}
               />
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Add gallery upload option */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*,video/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFileUpload(file);
-        }}
-      />
+      {/* Upload Section */}
+      {mediaMode === 'upload' && (
+        <div className="text-center">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*,video/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileUpload(file);
+            }}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-6 py-3 bg-purple-600 rounded-lg mb-4"
+          >
+            Choose File
+          </button>
+          <button
+            onClick={handleGooglePhotos}
+            className="px-6 py-3 bg-blue-600 rounded-lg block w-full"
+          >
+            Import from Google Photos
+          </button>
+        </div>
+      )}
 
-      <div className="fixed bottom-6 right-6">
-        <button
-          onClick={openGallery}
-          className="p-3 bg-purple-600 rounded-full text-white"
-        >
-          <ImageIcon size={24} />
-        </button>
-      </div>
+      {/* Preview & Post */}
+      {uploadedMedia && (
+        <div className="mt-4">
+          {uploadedMedia.type.startsWith('image/') ? (
+            <img
+              src={URL.createObjectURL(uploadedMedia)}
+              alt="Preview"
+              className="max-w-md mx-auto rounded-xl"
+            />
+          ) : (
+            <video
+              src={URL.createObjectURL(uploadedMedia)}
+              controls
+              className="max-w-md mx-auto rounded-xl"
+            />
+          )}
+          
+          <button
+            onClick={handlePost}
+            className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg block w-full max-w-md mx-auto"
+          >
+            Post
+          </button>
+        </div>
+      )}
     </div>
   );
 }
