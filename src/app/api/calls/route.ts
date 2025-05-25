@@ -12,6 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Validate caller
     const caller = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -20,14 +21,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
     }
 
-    // Create a new call record
+    // Validate receiver
+    const receiver = await prisma.user.findUnique({
+      where: { id: receiverId }
+    });
+
+    if (!receiver) {
+      return NextResponse.json({ error: 'Receiver not found' }, { status: 404 });
+    }
+
+    // Create call only if both users exist
     const call = await prisma.call.create({
       data: {
         type,
         status: 'RINGING',
+        roomId,
         callerId: caller.id,
-        receiverId,
-        roomId
+        receiverId: receiver.id
       },
       include: {
         caller: {
@@ -40,20 +50,19 @@ export async function POST(req: Request) {
       }
     });
 
-    // Create notification for receiver
+    // Create notification
     await prisma.notification.create({
       data: {
-        userId: receiverId,
+        userId: receiver.id,
         type: 'CALL',
         content: `Incoming ${type} call from ${caller.name}`,
-        fromUserId: caller.id,
-        callId: call.id
+        fromUserId: caller.id
       }
     });
 
-    // Emit socket event for incoming call
+    // Emit socket event
     if (global.io) {
-      global.io.to(receiverId).emit('call:incoming', {
+      global.io.to(receiver.id).emit('call:incoming', {
         callId: call.id,
         type: call.type,
         roomId: call.roomId,
@@ -68,7 +77,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ call });
   } catch (error) {
     console.error('[CALLS_POST]', error);
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to initiate call' },
+      { status: 500 }
+    );
   }
 }
 
@@ -119,7 +131,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Error fetching calls:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch calls' }, 
+      { error: 'Failed to fetch calls' },
       { status: 500 }
     );
   }
