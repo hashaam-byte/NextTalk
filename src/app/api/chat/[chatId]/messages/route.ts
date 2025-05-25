@@ -100,7 +100,7 @@ export async function POST(req: Request, context: { params: { chatId: string } }
         userId: participant.userId,
         type: 'MESSAGE',
         content: `New message from ${user.name || 'Someone'}`,
-        fromUserId: user.id
+        senderId: user.id // Changed from fromUserId to senderId
       }))
     });
 

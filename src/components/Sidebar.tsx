@@ -87,9 +87,10 @@ export default function Sidebar() {
     );
   }
   
+  // Desktop sidebar
   return (
     <motion.div 
-      className={`hidden md:flex flex-col h-full bg-black/30 backdrop-blur-lg border-r border-white/10 z-20 transition-all duration-300 overflow-hidden ${
+      className={`h-full bg-black/30 backdrop-blur-lg border-r border-white/10 z-20 transition-all duration-300 overflow-hidden ${
         isExpanded ? 'w-56' : 'w-20'
       }`}
       initial={false}
