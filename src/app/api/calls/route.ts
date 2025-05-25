@@ -6,13 +6,13 @@ import { authOptions } from '@/lib/authConfig';
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    const { type, receiverId, roomId } = await req.json();
-
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Validate caller
+    const { type, receiverId, roomId } = await req.json();
+
+    // Find caller
     const caller = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
     }
 
-    // Validate receiver
+    // Verify receiver exists
     const receiver = await prisma.user.findUnique({
       where: { id: receiverId }
     });
@@ -30,14 +30,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Receiver not found' }, { status: 404 });
     }
 
-    // Create call only if both users exist
+    // Create call record
     const call = await prisma.call.create({
       data: {
         type,
-        status: 'RINGING',
+        status: 'ringing',
         roomId,
         callerId: caller.id,
-        receiverId: receiver.id
+        receiverId: receiver.id,
+        startedAt: new Date(),
       },
       include: {
         caller: {
@@ -50,17 +51,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // Create notification
-    await prisma.notification.create({
-      data: {
-        userId: receiver.id,
-        type: 'CALL',
-        content: `Incoming ${type} call from ${caller.name}`,
-        fromUserId: caller.id
-      }
-    });
-
-    // Emit socket event
+    // Emit socket event for incoming call
     if (global.io) {
       global.io.to(receiver.id).emit('call:incoming', {
         callId: call.id,
@@ -77,10 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ call });
   } catch (error) {
     console.error('[CALLS_POST]', error);
-    return NextResponse.json(
-      { error: 'Failed to initiate call' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
 
@@ -91,19 +79,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
     const calls = await prisma.call.findMany({
       where: {
         OR: [
-          { callerId: user.id },
-          { receiverId: user.id }
+          { caller: { email: session.user.email } },
+          { receiver: { email: session.user.email } }
         ]
       },
       include: {
@@ -123,16 +103,13 @@ export async function GET(req: Request) {
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        startedAt: 'desc'
       }
     });
 
     return NextResponse.json({ calls });
   } catch (error) {
-    console.error('Error fetching calls:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch calls' },
-      { status: 500 }
-    );
+    console.error('[CALLS_GET]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
