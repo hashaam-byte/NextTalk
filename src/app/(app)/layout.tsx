@@ -52,8 +52,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 {/* Desktop Sidebar - Always show on larger screens */}
                 {!isAuthPage && !isMobile && <Sidebar />}
                 
-                {/* Main Content */}
-                <main className={`flex-1 flex flex-col w-full ${isMobile ? 'pb-20' : ''} ${!isAuthPage && !isMobile ? 'ml-20' : ''}`}>
+                {/* Main Content - Removed ml-20 margin */}
+                <main className={`flex-1 flex flex-col w-full ${isMobile ? 'pb-20' : ''}`}>
                   {!isAuthPage && <Navbar />}
                   <div className="flex-1 overflow-y-auto w-full">
                     {children}
