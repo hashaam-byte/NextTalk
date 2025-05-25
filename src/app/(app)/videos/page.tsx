@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Calendar, Clock, Search, Filter, VideoIcon, Tv, Star, Plus, X } from 'lucide-react';
+import { 
+  Sparkles, Heart, MessageSquare, Share2, 
+  Bookmark, Play, Pause, User, Trending, Calendar, Clock, Search, Filter, VideoIcon, Tv, Star, Plus, X 
+} from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 
@@ -22,14 +25,63 @@ interface Video {
   platform: 'youtube' | 'tiktok' | 'vimeo'; // Add platform type
 }
 
+const mockVideos: Video[] = [
+  {
+    id: '1',
+    title: 'Understanding Calculus: Limits and Derivatives',
+    thumbnail: '/thumbnails/math.jpg',
+    videoUrl: '/videos/math-calculus.mp4',
+    duration: '5:23',
+    creator: 'MathMaster',
+    creatorAvatar: '/avatars/mathmaster.jpg',
+    dateAdded: new Date(),
+    views: 1200,
+    category: 'Mathematics',
+    isLive: false,
+    platform: 'youtube'
+  },
+  {
+    id: '2',
+    title: 'Introduction to Psychology',
+    thumbnail: '/thumbnails/psychology.jpg',
+    videoUrl: '/videos/intro-psychology.mp4',
+    duration: '8:15',
+    creator: 'Psychology101',
+    creatorAvatar: '/avatars/psychology101.jpg',
+    dateAdded: new Date(),
+    views: 900,
+    category: 'Psychology',
+    isLive: false,
+    platform: 'youtube'
+  },
+  {
+    id: '3',
+    title: 'The Basics of Quantum Physics',
+    thumbnail: '/thumbnails/quantum.jpg',
+    videoUrl: '/videos/basics-quantum-physics.mp4',
+    duration: '10:45',
+    creator: 'PhysicsNerd',
+    creatorAvatar: '/avatars/physicsnerd.jpg',
+    dateAdded: new Date(),
+    views: 1500,
+    category: 'Physics',
+    isLive: false,
+    platform: 'youtube'
+  }
+];
+
 export default function VideosPage() {
   const { data: session, status } = useSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<Video[]>(mockVideos);
+  const [filteredVideos, setFilteredVideos] = useState<Video[]>(mockVideos);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const videoRefs = useRef<{ [key: string]: HTMLVideoElement }>({});
+  const [activeVideo, setActiveVideo] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState('all');
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -238,67 +290,32 @@ export default function VideosPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative">
-      {/* Background glowing elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute bottom-1/3 -right-20 w-80 h-80 bg-cyan-600/20 rounded-full filter blur-3xl"></div>
-        <div className="absolute top-3/4 left-1/3 w-40 h-40 bg-indigo-600/20 rounded-full filter blur-3xl"></div>
-
-        {/* Animated grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black">
+      {/* Categories */}
+      <div className="sticky top-0 z-20 bg-black/30 backdrop-blur-lg border-b border-white/10">
+        <div className="flex overflow-x-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-transparent p-4">
+          {categories.map((category) => (
+            <motion.button
+              key={category.id}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setActiveCategory(category.id)}
+              className={`px-4 py-2 rounded-xl flex items-center space-x-2 whitespace-nowrap ${
+                activeCategory === category.id
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20'
+                  : 'bg-white/10 text-gray-300 border border-white/5'
+              }`}
+            >
+              <category.icon size={16} />
+              <span>{category.name}</span>
+            </motion.button>
+          ))}
+        </div>
       </div>
 
-      <div className="relative z-10 p-4 flex-1 overflow-y-auto custom-scrollbar">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-          {/* Search Bar */}
-          <div className="relative w-full md:w-1/2">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search size={18} className="text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="w-full py-2 pl-10 pr-4 bg-white/10 border border-white/5 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 backdrop-blur-md transition-all text-white"
-              placeholder="Search videos..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {/* Filter Button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-4 py-2 bg-white/10 rounded-xl border border-white/5 text-white flex items-center gap-2 backdrop-blur-md"
-          >
-            <Filter size={16} />
-            <span>Filter</span>
-          </motion.button>
-        </div>
-
-        {/* Categories */}
-        <div className="overflow-x-auto pb-2 mb-6">
-          <div className="flex space-x-3">
-            {categories.map((category) => (
-              <motion.button
-                key={category.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveCategory(category.id)}
-                className={`px-4 py-2 rounded-xl flex items-center space-x-2 whitespace-nowrap ${
-                  activeCategory === category.id
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/20'
-                    : 'bg-white/10 text-gray-300 border border-white/5'
-                }`}
-              >
-                <category.icon size={16} />
-                <span>{category.name}</span>
-              </motion.button>
-            ))}
-          </div>
-        </div>
-
-        {/* Video Grid */}
+      {/* Video Feed */}
+      <div className="max-w-3xl mx-auto p-4">
+        {/* Video cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredVideos.length > 0 ? (
             filteredVideos.map((video, index) => (

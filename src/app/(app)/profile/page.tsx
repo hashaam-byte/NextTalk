@@ -37,6 +37,25 @@ interface Stats {
   onlineFriends: OnlineFriend[];
 }
 
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  progress: number;
+  maxProgress: number;
+  reward?: string;
+}
+
+interface Spark {
+  id: string;
+  userId: string;
+  count: number;
+  lastInteraction: Date;
+  streak: number;
+  level: number;
+}
+
 export default function ProfilePage() {
   const { data: session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
@@ -52,7 +71,9 @@ export default function ProfilePage() {
   
   const [editForm, setEditForm] = useState({...userData});
   const [stats, setStats] = useState<Stats | null>(null);
-
+  const [sparks, setSparks] = useState<Spark[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -203,6 +224,93 @@ export default function ProfilePage() {
           <p className="text-xs text-green-400">{friend.status}</p>
         </div>
       ))}
+    </div>
+  );
+
+  const SparksSection = () => (
+    <div className="mt-8">
+      <h2 className="text-2xl font-bold mb-4">
+        Your Sparks ⚡
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {sparks.map(spark => (
+          <div key={spark.id} className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-purple-400 mr-3">
+                  <Image
+                    src={`/path/to/spark-icon-${spark.level}.png`}
+                    alt={`Spark Level ${spark.level}`}
+                    width={40}
+                    height={40}
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-white text-sm font-medium">{spark.userId}</h3>
+                  <p className="text-gray-400 text-xs">
+                    {spark.count} interactions
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Streak: {spark.streak}</p>
+                <p className="text-xs text-gray-500">Level: {spark.level}</p>
+              </div>
+            </div>
+            
+            <div className="h-2.5 bg-gray-700 rounded-full">
+              <div 
+                className="bg-purple-600 rounded-full"
+                style={{ width: `${(spark.count / 100) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const AchievementsSection = () => (
+    <div className="mt-8">
+      <h2 className="text-2xl font-bold mb-4">
+        Achievements 🏆
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {achievements.map(achievement => (
+          <div key={achievement.id} className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-4">
+            <div className="flex items-center mb-2">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-purple-400 mr-3">
+                <Image
+                  src={achievement.icon}
+                  alt={achievement.title}
+                  width={40}
+                  height={40}
+                  className="object-cover"
+                />
+              </div>
+              
+              <div>
+                <h3 className="text-white text-sm font-medium">{achievement.title}</h3>
+                <p className="text-gray-400 text-xs">
+                  {achievement.progress} / {achievement.maxProgress}
+                </p>
+              </div>
+            </div>
+            
+            <p className="text-gray-300 text-sm mb-2">
+              {achievement.description}
+            </p>
+            
+            {achievement.reward && (
+              <div className="text-xs text-green-400">
+                Reward: {achievement.reward}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -459,6 +567,26 @@ export default function ProfilePage() {
                   </div>
                   
                   <FriendsList />
+                </motion.div>
+
+                {/* Sparks Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                  className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-6"
+                >
+                  <SparksSection />
+                </motion.div>
+
+                {/* Achievements Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                  className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-6"
+                >
+                  <AchievementsSection />
                 </motion.div>
               </div>
             </div>

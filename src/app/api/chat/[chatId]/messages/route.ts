@@ -50,30 +50,38 @@ export async function GET(req: Request, { params }: { params: { chatId: string }
   }
 }
 
-export async function POST(req: Request, context: { params: { chatId: string } }) {
+export async function POST(req: Request, { params }: { params: { chatId: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    const { chatId } = context.params;
     const { content } = await req.json();
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    // Get sender's info
+    const sender = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profileImage: true
+      }
     });
 
-    if (!user) {
+    if (!sender) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Create the message
     const message = await prisma.message.create({
       data: {
         content,
-        chatId,
-        senderId: user.id,
-        status: 'sent'
+        chatId: params.chatId,
+        senderId: sender.id,
+        status: 'sent',
+        timestamp: new Date()
       },
       include: {
         sender: {
@@ -87,22 +95,51 @@ export async function POST(req: Request, context: { params: { chatId: string } }
       }
     });
 
-    // Create notification for other chat participants
+    // Get other participants in the chat
     const otherParticipants = await prisma.participant.findMany({
       where: {
-        chatId,
-        userId: { not: user.id }
+        chatId: params.chatId,
+        userId: { not: sender.id }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
       }
     });
 
+    // Create notifications for each participant
     await prisma.notification.createMany({
       data: otherParticipants.map(participant => ({
         userId: participant.userId,
         type: 'MESSAGE',
-        content: `New message from ${user.name || 'Someone'}`,
-        senderId: user.id // Changed from fromUserId to senderId
+        content: `${sender.name}: ${content}`,
+        senderId: sender.id,
+        chatId: params.chatId,
+        createdAt: new Date(),
+        read: false
       }))
     });
+
+    // Emit real-time notifications via socket
+    if (global.io) {
+      otherParticipants.forEach(participant => {
+        global.io.to(participant.userId).emit('notification', {
+          type: 'MESSAGE',
+          content: `${sender.name}: ${content}`,
+          senderId: sender.id,
+          senderName: sender.name,
+          senderImage: sender.profileImage,
+          chatId: params.chatId,
+          timestamp: new Date(),
+          messageId: message.id
+        });
+      });
+    }
 
     return NextResponse.json({ message });
   } catch (error) {

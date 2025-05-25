@@ -13,6 +13,16 @@ import Sidebar from '@/components/Sidebar';
 import FiltersComponent from '@/components/FiltersComponent';
 import ARFilter from '@/components/ARFilter';
 
+interface Post {
+  id: string;
+  type: 'photo' | 'video';
+  url: string;
+  caption: string;
+  visibility: 'public' | 'friends' | 'private';
+  category?: string;
+  tags?: string[];
+}
+
 export default function CameraPage() {
   const { status } = useSession();
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
@@ -25,6 +35,11 @@ export default function CameraPage() {
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedVideo, setCapturedVideo] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [caption, setCaption] = useState('');
+  const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('friends');
+  const [category, setCategory] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -33,6 +48,7 @@ export default function CameraPage() {
   const recordingTimeRef = useRef<number>(0);
   const [recordingTime, setRecordingTime] = useState<string>('00:00');
   const messagesEndRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterOptions = [
     { name: 'Normal', value: 'none' },
@@ -259,6 +275,25 @@ export default function CameraPage() {
     // This is a simplified implementation
     // In a real app, you'd use the Web Share API or custom sharing options
     alert('Sharing functionality would be implemented here!');
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      // Handle file preview
+      const url = URL.createObjectURL(file);
+      if (file.type.startsWith('image/')) {
+        setCapturedImage(url);
+      } else if (file.type.startsWith('video/')) {
+        setCapturedVideo(url);
+      }
+    }
+  };
+
+  const handlePost = async () => {
+    // Handle post creation
+    // Add to user's profile and video feed
   };
 
   const applyFilter = (video: HTMLVideoElement, canvas: HTMLCanvasElement) => {
