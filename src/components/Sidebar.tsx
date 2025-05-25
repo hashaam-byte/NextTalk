@@ -15,13 +15,7 @@ export default function Sidebar() {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  // Check if current route should show mobile navigation
-  const showMobileNav = pathname.startsWith('/chat') || 
-                       pathname.startsWith('/groups') || 
-                       pathname.startsWith('/videos') || 
-                       pathname.startsWith('/camera');
-  
+
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -55,11 +49,11 @@ export default function Sidebar() {
     return pathname === path;
   };
   
-  // Early return for mobile navigation
-  if (isMobile && showMobileNav) {
+  // Mobile navigation bar
+  if (isMobile) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto">
           <div className="flex items-center justify-around py-2">
             { [
                 { icon: MessageSquare, label: 'Chats', path: '/chat' },
@@ -81,7 +75,7 @@ export default function Sidebar() {
                 {pathname.startsWith(item.path) && (
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-500"
+                    className="absolute -top-2 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-500"
                   />
                 )}
               </Link>

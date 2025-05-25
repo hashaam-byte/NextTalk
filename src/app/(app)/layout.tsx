@@ -16,12 +16,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const pathname = usePathname();
   const [isMobile, setIsMobile] = useState(false);
 
-  // Check if current route should show mobile navigation
-  const showMobileNav = pathname.startsWith('/chat') || 
-                       pathname.startsWith('/groups') || 
-                       pathname.startsWith('/videos') || 
-                       pathname.startsWith('/camera');
-  
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -35,7 +29,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
     };
   }, []);
 
-  // Don't show sidebar on auth pages
   const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password';
 
   return (
@@ -50,7 +43,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <SessionProvider> 
           <AuthProvider>
             <SocketProvider>
-              <div className="relative h-screen flex overflow-hidden">
+              <div className="relative h-screen flex flex-col overflow-hidden">
                 {/* Background elements for futuristic design */}
                 <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
                   {/* Gradient blobs */}
@@ -64,13 +57,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 
                 {!isAuthPage && !isMobile && <Sidebar />}
                 
-                <main className={`flex-1 flex flex-col h-screen overflow-hidden ${!isAuthPage && !isMobile ? 'ml-0' : ''}`}>
+                <main className={`flex-1 flex flex-col ${isMobile ? 'pb-16' : ''}`}>
                   {!isAuthPage && <Navbar />}
-                  {children}
+                  <div className="flex-1 overflow-y-auto">
+                    {children}
+                  </div>
                 </main>
 
                 {/* Show Sidebar as bottom nav on mobile */}
-                {isMobile && showMobileNav && <Sidebar />}
+                {isMobile && <Sidebar />}
               </div>
             </SocketProvider>
           </AuthProvider>
