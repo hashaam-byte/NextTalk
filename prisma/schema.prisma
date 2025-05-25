@@ -48,6 +48,9 @@ model User {
   mutedChats            String[] // Array of chat IDs that are muted
   resetToken            String?          @db.Text
   resetTokenExpiry      DateTime?
+  posts                 Post[]           @relation("UserPosts")
+  likes                 Like[]
+  comments              Comment[]
 }
 
 model Chat {
@@ -228,4 +231,48 @@ model Call {
 
   @@index([callerId])
   @@index([receiverId])
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  caption     String?
+  mediaUrl    String
+  mediaType   MediaType
+  userId      String
+  user        User      @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  comments    Comment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isPublic    Boolean   @default(true)
+  tags        String[]
+
+  @@index([userId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([postId])
 }

@@ -6,4 +6,17 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+export const uploadToCloudinary = async (file: string | Buffer, folder: string = 'posts') => {
+  try {
+    const result = await cloudinary.uploader.upload(file, {
+      folder,
+      resource_type: 'auto',
+    });
+    return result.secure_url;
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    throw new Error('Failed to upload media');
+  }
+};
+
 export default cloudinary;

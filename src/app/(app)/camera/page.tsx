@@ -12,6 +12,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import FiltersComponent from '@/components/FiltersComponent';
 import ARFilter from '@/components/ARFilter';
+import { useRouter } from 'next/navigation';
 
 interface Post {
   id: string;
@@ -25,6 +26,7 @@ interface Post {
 
 export default function CameraPage() {
   const { status } = useSession();
+  const router = useRouter();
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [selectedFilter, setSelectedFilter] = useState('none');
   const [filterMode, setFilterMode] = useState<'effect' | 'basic'>('effect');
@@ -291,9 +293,36 @@ export default function CameraPage() {
     }
   };
 
-  const handlePost = async () => {
-    // Handle post creation
-    // Add to user's profile and video feed
+  const handlePost = async (mediaFile: File | null, caption: string) => {
+    if (!mediaFile) return;
+
+    const formData = new FormData();
+    formData.append('media', mediaFile);
+    formData.append('caption', caption);
+    formData.append('mediaType', mediaFile.type.startsWith('video') ? 'VIDEO' : 'IMAGE');
+
+    try {
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create post');
+      }
+
+      router.push('/videos');
+    } catch (error) {
+      console.error('Error creating post:', error);
+    }
+  };
+
+  const handleGooglePhotos = async () => {
+    // Request permission to access Google Photos
+    const scope = 'https://www.googleapis.com/auth/photoslibrary.readonly';
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin)}/auth/callback&response_type=code&scope=${scope}&access_type=offline`;
+    
+    window.location.href = googleAuthUrl;
   };
 
   const applyFilter = (video: HTMLVideoElement, canvas: HTMLCanvasElement) => {
