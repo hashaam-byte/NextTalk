@@ -192,17 +192,17 @@ model UserSettings {
 
 model Post {
   id          String      @id @default(cuid())
-  mediaUrl    String
-  mediaType   String    // 'IMAGE' or 'VIDEO'
-  caption     String?
-  visibility  String    @default("PUBLIC") // Add this field
-  userId      String
-  viewersIds  String[]  // Array of user IDs who can view private posts
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime  @updatedAt
+  mediaUrl    String      // Required field for storing media URL
+  mediaType   String      // 'IMAGE' or 'VIDEO'
+  caption     String?     // Optional caption
+  visibility  String      @default("public") // 'public', 'private', 'contacts'
+  viewersIds  String[]    // Array of user IDs who can view private posts
+  userId      String      // ID of user who created the post
   user        User        @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
   likes       Like[]
   comments    Comment[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([userId])
 }
