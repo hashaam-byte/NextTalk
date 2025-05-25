@@ -37,7 +37,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <SessionProvider> 
           <AuthProvider>
             <SocketProvider>
-              <div className="relative h-screen flex flex-col overflow-hidden">
+              <div className="relative min-h-screen flex overflow-x-hidden">
                 {/* Background elements for futuristic design */}
                 <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
                   {/* Gradient blobs */}
@@ -49,19 +49,19 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
                 </div>
                 
+                {/* Desktop Sidebar - Always show on larger screens */}
                 {!isAuthPage && !isMobile && <Sidebar />}
                 
-                <main className={`flex-1 flex flex-col ${isMobile ? 'pb-16' : ''}`}>
+                {/* Main Content */}
+                <main className={`flex-1 flex flex-col w-full ${isMobile ? 'pb-20' : ''} ${!isAuthPage && !isMobile ? 'ml-20' : ''}`}>
                   {!isAuthPage && <Navbar />}
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto w-full">
                     {children}
                   </div>
-                  {/* Add bottom padding on mobile to prevent content from being hidden */}
-                  {isMobile && <div className="h-16" />}
                 </main>
 
-                {/* Show Sidebar as bottom nav on mobile */}
-                {isMobile && <Sidebar />}
+                {/* Mobile Bottom Navigation */}
+                {!isAuthPage && isMobile && <Sidebar />}
               </div>
             </SocketProvider>
           </AuthProvider>

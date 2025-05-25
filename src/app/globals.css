@@ -62,4 +62,45 @@ body {
   .fixed.bottom-0:not(.mobile-nav) {
     bottom: 4rem;
   }
+
+  /* Ensure content is always full width */
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Adjust grid layouts */
+  .grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  /* Ensure proper spacing above bottom nav */
+  .pb-safe {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Make tables scroll horizontally */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure modals don't get cut off */
+  .modal {
+    margin-bottom: 5rem !important;
+  }
+
+  /* Adjust fixed elements to account for bottom nav */
+  .fixed-bottom {
+    bottom: 5rem !important;
+  }
+}
+
+/* iOS Safe Area Support */
+@supports (padding: max(0px)) {
+  .safe-bottom {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom)) !important;
+  }
 }
