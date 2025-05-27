@@ -35,6 +35,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black">
         <SessionProvider>
+          <SocketProvider>
           <AuthProvider>
             <CallProvider>
               <div className="relative min-h-screen flex">
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               </div>
             </CallProvider>
           </AuthProvider>
+          </SocketProvider>
         </SessionProvider>
         
         
