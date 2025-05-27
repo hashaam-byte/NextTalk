@@ -41,8 +41,8 @@ model User {
   ownedGroups           Group[]          @relation("GroupOwner")
   groupMessages         GroupMessage[]
   settings              UserSettings?
-  outgoingCalls         Call[]           @relation("outgoingCalls")
-  incomingCalls         Call[]           @relation("incomingCalls")
+  outgoingCalls         Call[]           @relation("CallerCalls")
+  incomingCalls         Call[]           @relation("ReceiverCalls")
   blockedUsers          User[]           @relation("BlockedUsers")
   blockedBy             User[]           @relation("BlockedUsers")
   mutedChats            String[] // Array of chat IDs that are muted
@@ -228,23 +228,18 @@ enum CallType {
 }
 
 model Call {
-  id         String    @id @default(cuid())
-  type       String // 'audio' or 'video'
-  status     String // 'ringing', 'ongoing', 'ended', 'declined'
-  roomId     String
-  startedAt  DateTime  @default(now())
-  answeredAt DateTime?
-  endedAt    DateTime?
-  duration   Int? // in seconds
-  createdAt  DateTime  @default(now())
-
-  // Caller relationship
-  caller   User   @relation("outgoingCalls", fields: [callerId], references: [id])
-  callerId String
-
-  // Receiver relationship
-  receiver   User   @relation("incomingCalls", fields: [receiverId], references: [id])
-  receiverId String
+  id          String      @id @default(cuid())
+  type        String      // 'audio' or 'video'
+  status      String      // 'missed', 'completed', 'rejected'
+  startTime   DateTime?
+  endTime     DateTime?
+  duration    Int?
+  callerId    String
+  caller      User        @relation("CallerCalls", fields: [callerId], references: [id])
+  receiverId  String
+  receiver    User        @relation("ReceiverCalls", fields: [receiverId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([callerId])
   @@index([receiverId])

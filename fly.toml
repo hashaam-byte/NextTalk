@@ -1,0 +1,22 @@
+app = "nexttalk-turn"
+primary_region = "iad"
+
+[env]
+  COTURN_USER = "nexttalk"
+  COTURN_REALM = "nexttalk.fly.dev"
+  MIN_PORT = "49152"
+  MAX_PORT = "65535"
+
+[http_service]
+  internal_port = 3478
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[services]]
+  protocol = "udp"
+  internal_port = 3478
+
+  [[services.ports]]
+    port = 3478

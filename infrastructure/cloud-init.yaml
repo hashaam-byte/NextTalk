@@ -1,0 +1,30 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - coturn
+  - certbot
+
+write_files:
+  - path: /etc/turnserver.conf
+    content: |
+      listening-port=3478
+      tls-listening-port=5349
+      min-port=49152
+      max-port=65535
+      realm=your-domain.com
+      server-name=your-domain.com
+      fingerprint
+      lt-cred-mech
+      user=your-turn-username:your-turn-password
+      total-quota=0
+      stale-nonce=600
+      cert=/etc/letsencrypt/live/your-domain.com/cert.pem
+      pkey=/etc/letsencrypt/live/your-domain.com/privkey.pem
+      cipher-list="ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384"
+      no-stdout-log
+
+runcmd:
+  - systemctl enable coturn
+  - systemctl start coturn

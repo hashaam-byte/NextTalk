@@ -7,6 +7,7 @@ import { ArrowLeft, Send, Smile, Video, Phone, MoreVertical, Copy, Forward, Star
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import EmojiPicker from '@/components/chat/EmojiPicker';
+import { useCall } from '@/hooks/useCall';
 import CallOverlay from '@/components/call/CallOverlay';
 import ContactDrawer from '@/components/chat/ContactDrawer';
 
@@ -81,6 +82,7 @@ export default function ChatPage() {
     status: 'ringing' | 'ongoing' | 'ended';
     startTime?: Date;
   } | null>(null);
+  const call = useCall(global.io);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -388,27 +390,8 @@ export default function ChatPage() {
   };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
-    try {
-      const response = await fetch('/api/calls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          receiverId: chatId,
-          roomId: `${chatId}-${Date.now()}` // Unique room ID for WebRTC
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setActiveCall({
-          id: data.call.id,
-          type,
-          status: 'ringing'
-        });
-      }
-    } catch (error) {
-      console.error('Error starting call:', error);
+    if (chatId) {
+      await call.initializeCall(chatId, type);
     }
   };
 
@@ -488,7 +471,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
       {/* Fixed Chat Header */}
       <div className="sticky top-0 z-30 bg-black/20 backdrop-blur-lg border-b border-white/10">
         <div className="flex items-center p-3 sm:p-4">
@@ -806,15 +789,15 @@ export default function ChatPage() {
 
       {/* Call Overlay */}
       <AnimatePresence>
-        {activeCall && (
+        {call.isInCall && (
           <CallOverlay
-            type={activeCall.type}
-            callerName={chatInfo?.name || 'User'}
-            callerImage={chatInfo?.avatar}
-            isIncoming={activeCall.isIncoming}
-            onAnswer={handleAnswerCall}
-            onDecline={handleDeclineCall}
-            onEnd={handleEndCall}
+            type={call.callType!}
+            callState={call.callState!}
+            caller={call.caller!}
+            duration={call.duration}
+            onAnswer={() => call.answerCall(chatId)}
+            onDecline={() => call.declineCall(chatId)}
+            onEndCall={call.endCall}
           />
         )}
       </AnimatePresence>

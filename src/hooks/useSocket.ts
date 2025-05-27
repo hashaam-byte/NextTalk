@@ -9,7 +9,7 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType>({ socket: null });
 
-export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
@@ -19,6 +19,34 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     setSocket(socketInstance);
+
+    socket.on('call:incoming', (data) => {
+      // Handle incoming call
+    });
+
+    socket.on('call:accepted', (data) => {
+      // Handle call accepted
+    });
+
+    socket.on('call:rejected', () => {
+      // Handle call rejected
+    });
+
+    socket.on('call:ended', () => {
+      // Handle call ended
+    });
+
+    socket.on('webrtc:offer', async (data) => {
+      // Handle WebRTC offer
+    });
+
+    socket.on('webrtc:answer', async (data) => {
+      // Handle WebRTC answer
+    });
+
+    socket.on('webrtc:ice-candidate', async (data) => {
+      // Handle ICE candidate
+    });
 
     return () => {
       socketInstance.close();
