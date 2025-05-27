@@ -45,7 +45,7 @@ export default function Sidebar() {
   const checkActive = (path: string) => {
     if (path === '/chat' && pathname.startsWith('/chat')) return true;
     if (path === '/groups' && pathname.startsWith('/groups')) return true;
-    if (path === '/videos' && pathname.startsWith('/videos')) return true;
+    if (path === '/reels' && pathname.startsWith('/reels')) return true;
     return pathname === path;
   };
   
@@ -53,36 +53,35 @@ export default function Sidebar() {
   if (isMobile) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10">
-        <div className="container mx-auto">
-          <div className="flex items-center justify-around py-2">
-            { [
-                { icon: Home, label: 'Home', path: '/home' },
-                { icon: MessageSquare, label: 'Chats', path: '/chat' },
-                { icon: Users, label: 'Groups', path: '/groups' },
-                { icon: Video, label: 'Videos', path: '/videos' },
-                { icon: Camera, label: 'Camera', path: '/camera' }
-              ].map((item) => (
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center justify-around">
+            {navItems.map((item) => (
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex flex-col items-center p-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center py-3 px-2 relative ${
                   pathname.startsWith(item.path)
-                    ? 'text-purple-400 bg-white/10'
-                    : 'text-gray-400 hover:text-purple-400'
+                    ? 'text-purple-400'
+                    : 'text-gray-400'
                 }`}
               >
-                <item.icon size={24} className="mb-1" />
-                <span className="text-xs">{item.label}</span>
+                {/* Active Indicator */}
                 {pathname.startsWith(item.path) && (
                   <motion.div
-                    layoutId="activeTab"
-                    className="absolute -top-2 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-500"
+                    layoutId="bottomNav"
+                    className="absolute -top-[1px] left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-500"
                   />
                 )}
+                
+                <item.icon size={24} />
+                <span className="text-xs mt-1">{item.name}</span>
               </Link>
-            )) }
+            ))}
           </div>
         </div>
+
+        {/* Safe Area Spacing for iOS */}
+        <div className="h-[env(safe-area-inset-bottom)]"></div>
       </div>
     );
   }

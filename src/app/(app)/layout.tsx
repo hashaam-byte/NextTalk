@@ -34,7 +34,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black">
-        <SessionProvider> 
+        <SessionProvider>
           <AuthProvider>
             <SocketProvider>
               <div className="relative min-h-screen flex">
@@ -57,7 +57,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 )}
                 
                 {/* Main Content */}
-                <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isMobile ? 'pb-20' : ''}`}>
+                <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isMobile ? 'pb-[80px]' : ''}`}>
                   {!isAuthPage && <Navbar />}
                   <div className="flex-1 overflow-y-auto">
                     {children}
