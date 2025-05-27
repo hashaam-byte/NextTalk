@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GeistMono } from 'geist/font/mono';
+import { SocketProvider } from '@/hooks/useSocket';
 import AuthProvider from '@/components/providers/AuthProvider';
 import './globals.css';
 
@@ -16,7 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={GeistMono.className}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <SocketProvider>
+            {children}
+          </SocketProvider>
+        </AuthProvider>
       </body>
     </html>
   );
