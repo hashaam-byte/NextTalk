@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { GeistMono } from 'geist/font/mono';
-import { SessionProvider } from 'next-auth/react';
 import { SocketProvider } from '@/hooks/useSocket';
 import { AuthProvider } from '@/context/AuthContext';
 import './globals.css';
@@ -18,13 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={GeistMono.className}>
-        <SessionProvider>
-          <AuthProvider>
-            <SocketProvider>
-              {children}
-            </SocketProvider>
-          </AuthProvider>
-        </SessionProvider>
+        <AuthProvider>
+          <SocketProvider>
+            {children}
+          </SocketProvider>
+        </AuthProvider>
       </body>
     </html>
   );
