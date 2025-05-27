@@ -2,11 +2,21 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Home, ArrowLeft, RefreshCcw } from 'lucide-react';
+import { Home, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export default function NotFound() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black relative overflow-hidden flex items-center justify-center">
@@ -35,14 +45,19 @@ export default function NotFound() {
         </motion.div>
 
         {/* Error message */}
-        <div className="space-y-4 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="space-y-4 mb-8"
+        >
           <h2 className="text-2xl md:text-3xl font-bold text-white">
             Page Not Found
           </h2>
           <p className="text-gray-400 max-w-md mx-auto">
             The page you're looking for doesn't exist or has been moved.
           </p>
-        </div>
+        </motion.div>
 
         {/* Action buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
