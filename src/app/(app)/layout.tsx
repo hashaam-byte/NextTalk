@@ -35,9 +35,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en">
       <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black">
         <SessionProvider>
-          <SocketProvider>
           <AuthProvider>
-            <CallProvider>
+          <SocketProvider>
+          <CallProvider>
               <div className="relative min-h-screen flex">
                 {/* Background elements for futuristic design */}
                 <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
@@ -69,8 +69,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 {!isAuthPage && isMobile && <Sidebar />}
               </div>
             </CallProvider>
-          </AuthProvider>
           </SocketProvider>
+          </AuthProvider>
         </SessionProvider>
         
         

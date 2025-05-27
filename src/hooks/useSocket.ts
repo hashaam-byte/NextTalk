@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { useSession } from 'next-auth/react';
 
 const SocketContext = createContext<Socket | null>(null);
 
@@ -15,30 +16,23 @@ export function useSocket() {
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const { data: session } = useSession();
 
   useEffect(() => {
-    setMounted(true);
-    if (typeof window !== 'undefined') {
-      const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || '', {
-        reconnectionDelay: 1000,
-        reconnection: true,
-        reconnectionAttempts: 10,
-        transports: ['websocket'],
-        agent: false,
-        upgrade: false,
-        rejectUnauthorized: false,
-      });
+    if (!session?.user) return;
 
-      setSocket(socketInstance);
+    const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || '', {
+      auth: {
+        userId: session.user.id,
+      },
+    });
 
-      return () => {
-        socketInstance.close();
-      };
-    }
-  }, []);
+    setSocket(socketInstance);
 
-  if (!mounted) return <>{children}</>;
+    return () => {
+      socketInstance.close();
+    };
+  }, [session]);
 
   return (
     <SocketContext.Provider value={socket}>
