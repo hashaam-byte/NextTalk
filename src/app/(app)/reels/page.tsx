@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Heart, MessageCircle, Share2, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Plus } from 'lucide-react';
 import Image from 'next/image';
 
 interface Post {
@@ -24,7 +24,21 @@ interface Post {
 export default function ReelsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, []);
 
   useEffect(() => {
     fetchPosts();
@@ -48,16 +62,16 @@ export default function ReelsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black">
-      {/* Mobile-optimized header - Added without modifying desktop */}
+      {/* Mobile-optimized header */}
       <div className="md:hidden sticky top-0 z-30 bg-black/30 backdrop-blur-lg p-4 border-b border-white/10">
         <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
           Reels
         </h1>
       </div>
 
-      {/* Existing content wrapper - Added mobile padding */}
+      {/* Content wrapper with mobile padding */}
       <div className="p-4 md:p-4">
-        {/* Existing desktop header remains unchanged */}
+        {/* Desktop header */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
             Reels
@@ -72,16 +86,17 @@ export default function ReelsPage() {
           </motion.button>
         </div>
 
-        {/* Modified grid for better mobile display */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-4 pb-20 md:pb-0`}>
-          {/* Posts Grid */}
+        {/* Posts grid */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-4 pb-20 md:pb-0 ${
+          isMobile ? 'auto-rows-[calc(100vh-12rem)]' : ''
+        }`}>
           {loading ? (
-            <div className="grid grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-[9/16] bg-gray-800/50 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : (
+            // Loading skeletons
+            Array(4).fill(0).map((_, i) => (
+              <div key={i} className="aspect-[9/16] bg-gray-800/50 rounded-xl animate-pulse" />
+            ))
+          ) : posts.length > 0 ? (
+            // Actual posts
             posts.map((post) => (
               <motion.div
                 key={post.id}
@@ -145,21 +160,42 @@ export default function ReelsPage() {
                 </div>
               </motion.div>
             ))
-          }
+          ) : (
+            // Empty state
+            <div className="col-span-full flex flex-col items-center justify-center text-center p-8">
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="w-16 h-16 mb-4 rounded-full bg-purple-500/20 flex items-center justify-center"
+              >
+                <Plus className="w-8 h-8 text-purple-400" />
+              </motion.div>
+              <h3 className="text-xl font-semibold text-white mb-2">No Reels Yet</h3>
+              <p className="text-gray-400 mb-6">Be the first to create a reel!</p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleAddPost}
+                className="px-6 py-3 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white"
+              >
+                Create Reel
+              </motion.button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Mobile floating action button - New addition */}
-      <div className="md:hidden fixed bottom-20 right-4 z-20">
+      {/* Mobile floating action button */}
+      {isMobile && (
         <motion.button
+          className="fixed bottom-20 right-4 z-20 p-4 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 shadow-lg"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => router.push('/camera')}
-          className="p-4 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 shadow-lg"
+          onClick={handleAddPost}
         >
           <Plus className="w-6 h-6 text-white" />
         </motion.button>
-      </div>
+      )}
     </div>
   );
 }
