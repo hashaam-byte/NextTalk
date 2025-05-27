@@ -315,224 +315,280 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black">
-      {/* Mobile-specific header - New addition */}
-      <div className="md:hidden sticky top-0 z-30 bg-black/30 backdrop-blur-lg p-4 border-b border-white/10">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-          Profile
-        </h1>
-      </div>
+    <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+      <div className="min-h-full relative">
+        {/* Background elements */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
+          <div className="absolute bottom-1/3 -right-20 w-80 h-80 bg-cyan-600/20 rounded-full filter blur-3xl"></div>
+          <div className="absolute top-3/4 left-1/3 w-40 h-40 bg-indigo-600/20 rounded-full filter blur-3xl"></div>
+          
+          {/* Animated grid background */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
+        </div>
 
-      {/* Modified content wrapper for mobile */}
-      <div className="p-4 md:p-6 pb-20 md:pb-6">
-        {/* Responsive grid layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile section with mobile optimizations */}
-          <div className="lg:col-span-1">
-            <div className="bg-black/20 backdrop-blur-xl rounded-xl p-4 md:p-6">
-              {/* Cover Photo */}
-              <div className="h-32 bg-gradient-to-r from-purple-600/30 to-cyan-600/30 relative">
-                {isEditing && (
-                  <button className="absolute right-3 top-3 bg-black/50 p-2 rounded-full">
-                    <Camera size={16} className="text-white" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Profile Picture */}
-              <div className="flex justify-center -mt-16">
-                <div className="relative">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-900 bg-gradient-to-br from-indigo-800/50 to-purple-900/50 p-0.5">
-                    <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
-                      {userData.profileImage ? (
-                        <Image
-                          src={userData.profileImage}
-                          alt={userData.name || 'User'}
-                          width={128}
-                          height={128}
-                          className="object-cover"
+        {/* Content */}
+        <div className="relative z-10">
+          <div className="container mx-auto max-w-6xl px-4 py-6 pt-20">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Left Column - Profile Info */}
+              <div className="col-span-1">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden"
+                >
+                  {/* Cover Photo */}
+                  <div className="h-32 bg-gradient-to-r from-purple-600/30 to-cyan-600/30 relative">
+                    {isEditing && (
+                      <button className="absolute right-3 top-3 bg-black/50 p-2 rounded-full">
+                        <Camera size={16} className="text-white" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Profile Picture */}
+                  <div className="flex justify-center -mt-16">
+                    <div className="relative">
+                      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-900 bg-gradient-to-br from-indigo-800/50 to-purple-900/50 p-0.5">
+                        <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                          {userData.profileImage ? (
+                            <Image
+                              src={userData.profileImage}
+                              alt={userData.name || 'User'}
+                              width={128}
+                              height={128}
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-white font-medium text-4xl">
+                              {userData.name?.[0] || 'U'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <label className="absolute bottom-0 right-0 cursor-pointer">
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
+                        />
+                        <motion.div
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          className={`bg-purple-600 p-2 rounded-full text-white ${isUploading ? 'opacity-50' : ''}`}
+                        >
+                          {isUploading ? (
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                          ) : (
+                            <Camera size={16} />
+                          )}
+                        </motion.div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* Profile Info */}
+                  <div className="p-6 text-center">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="name"
+                        value={editForm.name}
+                        onChange={handleInputChange}
+                        className="text-2xl font-bold text-center w-full mb-2 bg-white/10 text-white border border-white/20 rounded-lg p-2"
+                      />
+                    ) : (
+                      <h2 className="text-2xl font-bold text-white mb-1">{userData.name}</h2>
+                    )}
+                    
+                    <div className="space-y-4 mt-6">
+                      {/* Email */}
+                      <div className="flex items-center text-gray-300">
+                        <Mail size={16} className="text-purple-400 mr-2" />
+                        {isEditing ? (
+                          <input
+                            type="email"
+                            name="email"
+                            value={editForm.email}
+                            onChange={handleInputChange}
+                            className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
+                          />
+                        ) : (
+                          <span className="text-sm">{userData.email}</span>
+                        )}
+                      </div>
+                      
+                      {/* Phone */}
+                      <div className="flex items-center text-gray-300">
+                        <Phone size={16} className="text-cyan-400 mr-2" />
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="phone"
+                            value={editForm.phone}
+                            onChange={handleInputChange}
+                            className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
+                          />
+                        ) : (
+                          <span className="text-sm">{userData.phone}</span>
+                        )}
+                      </div>
+                      
+                      {/* Location */}
+                      <div className="flex items-center text-gray-300">
+                        <MapPin size={16} className="text-indigo-400 mr-2" />
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="location"
+                            value={editForm.location}
+                            onChange={handleInputChange}
+                            className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
+                          />
+                        ) : (
+                          <span className="text-sm">{userData.location}</span>
+                        )}
+                      </div>
+                      
+                      {/* Website */}
+                      <div className="flex items-center text-gray-300">
+                        <LinkIcon size={16} className="text-green-400 mr-2" />
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="website"
+                            value={editForm.website}
+                            onChange={handleInputChange}
+                            className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
+                          />
+                        ) : (
+                          <span className="text-sm">{userData.website}</span>
+                        )}
+                      </div>
+                      
+                      {/* Join Date */}
+                      <div className="flex items-center text-gray-300">
+                        <Calendar size={16} className="text-amber-400 mr-2" />
+                        <span className="text-sm">Joined {userData.createdAt.toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Bio */}
+                    <div className="mt-6">
+                      <h3 className="text-white text-left mb-2 font-medium">Bio</h3>
+                      {isEditing ? (
+                        <textarea
+                          name="bio"
+                          value={editForm.bio}
+                          onChange={handleInputChange}
+                          className="w-full h-24 bg-white/10 text-white border border-white/20 rounded-lg p-3 text-sm"
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full text-white font-medium text-4xl">
-                          {userData.name?.[0] || 'U'}
+                        <p className="text-gray-300 text-sm text-left">{userData.bio}</p>
+                      )}
+                    </div>
+                    
+                    {/* Edit/Save Buttons */}
+                    <div className="mt-6">
+                      {isEditing ? (
+                        <div className="flex gap-3 justify-center">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleSave}
+                            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg flex items-center shadow-lg shadow-purple-500/20"
+                          >
+                            <Save size={16} className="mr-2" />
+                            Save
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleCancel}
+                            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center"
+                          >
+                            <X size={16} className="mr-2" />
+                            Cancel
+                          </motion.button>
                         </div>
+                      ) : (
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setIsEditing(true)}
+                          className="bg-white/10 hover:bg-white/15 text-white px-4 py-2 rounded-lg flex items-center mx-auto"
+                        >
+                          <Edit size={16} className="mr-2" />
+                          Edit Profile
+                        </motion.button>
                       )}
                     </div>
                   </div>
-                  
-                  <label className="absolute bottom-0 right-0 cursor-pointer">
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={isUploading}
-                    />
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className={`bg-purple-600 p-2 rounded-full text-white ${isUploading ? 'opacity-50' : ''}`}
-                    >
-                      {isUploading ? (
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                      ) : (
-                        <Camera size={16} />
-                      )}
-                    </motion.div>
-                  </label>
-                </div>
+                </motion.div>
               </div>
               
-              {/* Profile Info */}
-              <div className="p-6 text-center">
-                {isEditing ? (
-                  <input
-                    type="text"
-                    name="name"
-                    value={editForm.name}
-                    onChange={handleInputChange}
-                    className="text-2xl font-bold text-center w-full mb-2 bg-white/10 text-white border border-white/20 rounded-lg p-2"
-                  />
-                ) : (
-                  <h2 className="text-2xl font-bold text-white mb-1">{userData.name}</h2>
-                )}
+              {/* Right Column - Stats & Activity */}
+              <div className="col-span-1 md:col-span-2 space-y-6">
+                {/* Stats Cards */}
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <StatsCards />
+                </motion.div>
                 
-                <div className="space-y-4 mt-6">
-                  {/* Email */}
-                  <div className="flex items-center text-gray-300">
-                    <Mail size={16} className="text-purple-400 mr-2" />
-                    {isEditing ? (
-                      <input
-                        type="email"
-                        name="email"
-                        value={editForm.email}
-                        onChange={handleInputChange}
-                        className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
-                      />
-                    ) : (
-                      <span className="text-sm">{userData.email}</span>
-                    )}
-                  </div>
-                  
-                  {/* Phone */}
-                  <div className="flex items-center text-gray-300">
-                    <Phone size={16} className="text-cyan-400 mr-2" />
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        name="phone"
-                        value={editForm.phone}
-                        onChange={handleInputChange}
-                        className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
-                      />
-                    ) : (
-                      <span className="text-sm">{userData.phone}</span>
-                    )}
-                  </div>
-                  
-                  {/* Location */}
-                  <div className="flex items-center text-gray-300">
-                    <MapPin size={16} className="text-indigo-400 mr-2" />
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        name="location"
-                        value={editForm.location}
-                        onChange={handleInputChange}
-                        className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
-                      />
-                    ) : (
-                      <span className="text-sm">{userData.location}</span>
-                    )}
-                  </div>
-                  
-                  {/* Website */}
-                  <div className="flex items-center text-gray-300">
-                    <LinkIcon size={16} className="text-green-400 mr-2" />
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        name="website"
-                        value={editForm.website}
-                        onChange={handleInputChange}
-                        className="flex-1 bg-white/10 text-white border border-white/20 rounded-lg p-2 text-sm"
-                      />
-                    ) : (
-                      <span className="text-sm">{userData.website}</span>
-                    )}
-                  </div>
-                  
-                  {/* Join Date */}
-                  <div className="flex items-center text-gray-300">
-                    <Calendar size={16} className="text-amber-400 mr-2" />
-                    <span className="text-sm">Joined {userData.createdAt.toLocaleDateString()}</span>
-                  </div>
-                </div>
+                {/* Recent Activity */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-6"
+                >
+                  <h3 className="text-xl font-bold text-white mb-4">Recent Activity</h3>
+                  <ActivitiesList />
+                </motion.div>
                 
-                {/* Bio */}
-                <div className="mt-6">
-                  <h3 className="text-white text-left mb-2 font-medium">Bio</h3>
-                  {isEditing ? (
-                    <textarea
-                      name="bio"
-                      value={editForm.bio}
-                      onChange={handleInputChange}
-                      className="w-full h-24 bg-white/10 text-white border border-white/20 rounded-lg p-3 text-sm"
-                    />
-                  ) : (
-                    <p className="text-gray-300 text-sm text-left">{userData.bio}</p>
-                  )}
-                </div>
-                
-                {/* Edit/Save Buttons */}
-                <div className="mt-6">
-                  {isEditing ? (
-                    <div className="flex gap-3 justify-center">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleSave}
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg flex items-center shadow-lg shadow-purple-500/20"
-                      >
-                        <Save size={16} className="mr-2" />
-                        Save
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleCancel}
-                        className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center"
-                      >
-                        <X size={16} className="mr-2" />
-                        Cancel
-                      </motion.button>
-                    </div>
-                  ) : (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setIsEditing(true)}
-                      className="bg-white/10 hover:bg-white/15 text-white px-4 py-2 rounded-lg flex items-center mx-auto"
-                    >
-                      <Edit size={16} className="mr-2" />
-                      Edit Profile
-                    </motion.button>
-                  )}
-                </div>
+                {/* Friends */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                  className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-6"
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-white">Friends</h3>
+                    <button className="text-sm text-purple-400 hover:text-purple-300">View All</button>
+                  </div>
+                  
+                  <FriendsList />
+                </motion.div>
+
+                {/* Sparks Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                  className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-6"
+                >
+                  <SparksSection />
+                </motion.div>
+
+                {/* Achievements Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                  className="bg-black/20 backdrop-blur-md rounded-xl border border-white/10 p-6"
+                >
+                  <AchievementsSection />
+                </motion.div>
               </div>
-            </div>
-          </div>
-
-          {/* Stats and activity with mobile spacing */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Mobile-optimized stats grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* ...existing stats content... */}
-            </div>
-
-            {/* Activity feed with mobile scroll */}
-            <div className="bg-black/20 backdrop-blur-xl rounded-xl p-4 md:p-6 max-h-[calc(100vh-20rem)] overflow-y-auto">
-              {/* ...existing activity content... */}
             </div>
           </div>
         </div>

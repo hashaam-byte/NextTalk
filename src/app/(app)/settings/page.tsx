@@ -783,41 +783,49 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black">
-      {/* Mobile-specific header */}
-      <div className="md:hidden sticky top-0 z-30 bg-black/30 backdrop-blur-lg p-4 border-b border-white/10">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-          Settings
-        </h1>
-      </div>
-
-      {/* Content wrapper with mobile padding */}
-      <div className="p-4 md:p-6 pb-20 md:pb-6">
-        {/* Mobile-optimized tabs */}
-        <div className="md:hidden overflow-x-auto flex space-x-2 mb-4 scrollbar-hide">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setSelectedTab(tab)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap ${
-                selectedTab === tab
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white/10 text-gray-400'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+    <div className="flex-1 overflow-auto bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 text-white">
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-cyan-400">
+            Account Settings
+          </h1>
+          <p className="text-gray-400 mt-2">
+            Customize your account preferences and application settings
+          </p>
         </div>
-
-        {/* Existing desktop layout remains unchanged */}
-        <div className="hidden md:flex">
-          {/* ...existing desktop layout... */}
-        </div>
-
-        {/* Mobile content */}
-        <div className="md:hidden">
-          {renderContent()}
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="md:col-span-1">
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10 sticky top-8">
+              <nav className="space-y-1">
+                {tabs.map((tab) => (
+                  <motion.button
+                    key={tab}
+                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.05)" }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedTab(tab)}
+                    className={`w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium ${
+                      selectedTab === tab 
+                        ? 'bg-gradient-to-r from-purple-600/30 to-indigo-600/30 text-white border border-purple-500/30'
+                        : 'text-gray-300 hover:text-white'
+                    }`}
+                  >
+                    {tab === 'General' && <Globe size={16} className="mr-2" />}
+                    {tab === 'Appearance' && <Palette size={16} className="mr-2" />}
+                    {tab === 'Notifications' && <Bell size={16} className="mr-2" />}
+                    {tab === 'Privacy' && <Lock size={16} className="mr-2" />}
+                    {tab === 'Parental Controls' && <Shield size={16} className="mr-2" />}
+                    {tab === 'Help' && <HelpCircle size={16} className="mr-2" />}
+                    {tab}
+                  </motion.button>
+                ))}
+              </nav>
+            </div>
+          </div>
+          
+          <div className="md:col-span-3">
+            {renderContent()}
+          </div>
         </div>
       </div>
     </div>
