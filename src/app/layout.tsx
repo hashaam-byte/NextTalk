@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { GeistMono } from 'geist/font/mono';
 import { SocketProvider } from '@/hooks/useSocket';
-import AuthProvider from '@/components/providers/AuthProvider';
+import { AuthProvider } from '@/context/AuthContext';
 import './globals.css';
 
 export const metadata: Metadata = {
