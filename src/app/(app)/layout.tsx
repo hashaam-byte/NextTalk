@@ -3,10 +3,10 @@
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { SessionProvider } from 'next-auth/react';
+import { SocketProvider } from '@/hooks/useSocket';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import { AuthProvider } from '@/context/AuthContext';
-import { CallProvider } from '@/context/CallContext';
 
 interface RootLayoutProps {
   children: React.ReactNode;
@@ -34,11 +34,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black">
-        <SessionProvider>
+        <SessionProvider> 
           <AuthProvider>
-          <SocketProvider>
-          <CallProvider>
-              <div className="relative min-h-screen flex">
+            <SocketProvider>
+              <div className="relative min-h-screen flex overflow-x-hidden">
                 {/* Background elements for futuristic design */}
                 <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
                   {/* Gradient blobs */}
@@ -52,15 +51,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 
                 {/* Desktop Sidebar - Fixed position */}
                 {!isAuthPage && !isMobile && (
-                  <div className="sticky top-0 h-screen flex-shrink-0">
+                  <div className="fixed left-0 top-0 h-screen">
                     <Sidebar />
                   </div>
                 )}
                 
-                {/* Main Content */}
-                <main className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isMobile ? 'pb-[80px]' : ''}`}>
+                {/* Main Content - Add left margin on desktop */}
+                <main className={`flex-1 flex flex-col w-full ${isMobile ? 'pb-20' : 'ml-20'}`}>
                   {!isAuthPage && <Navbar />}
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto w-full">
                     {children}
                   </div>
                 </main>
@@ -68,8 +67,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 {/* Mobile Bottom Navigation */}
                 {!isAuthPage && isMobile && <Sidebar />}
               </div>
-            </CallProvider>
-          </SocketProvider>
+            </SocketProvider>
           </AuthProvider>
         </SessionProvider>
         
