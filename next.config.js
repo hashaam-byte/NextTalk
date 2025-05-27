@@ -7,7 +7,7 @@ const nextConfig = {
     ignoreDuringBuilds: true
   },
   experimental: {
-    appDir: true,
+    serverActions: true,
   },
   images: {
     domains: [
