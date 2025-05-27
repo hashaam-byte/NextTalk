@@ -51,38 +51,50 @@ export default function Sidebar() {
   
   // Mobile navigation bar
   if (isMobile) {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10">
-        <div className="max-w-md mx-auto">
-          <div className="flex items-center justify-around">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`flex flex-col items-center py-3 px-2 relative ${
-                  pathname.startsWith(item.path)
-                    ? 'text-purple-400'
-                    : 'text-gray-400'
-                }`}
-              >
-                {/* Active Indicator */}
-                {pathname.startsWith(item.path) && (
-                  <motion.div
-                    layoutId="bottomNav"
-                    className="absolute -top-[1px] left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-500"
-                  />
-                )}
-                
-                <item.icon size={24} />
-                <span className="text-xs mt-1">{item.name}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
+    // Hide sidebar on specific routes
+    const hideSidebarRoutes = ['/call', '/camera', '/login', '/register'];
+    if (hideSidebarRoutes.some(route => pathname?.startsWith(route))) {
+      return null;
+    }
 
-        {/* Safe Area Spacing for iOS */}
-        <div className="h-[env(safe-area-inset-bottom)]"></div>
-      </div>
+    return (
+      <>
+        {/* Add safe area spacer for content */}
+        <div className="h-[env(safe-area-inset-bottom)]" />
+
+        {/* Fixed Mobile Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <div className="bg-black/80 backdrop-blur-xl border-t border-white/10">
+            <div className="max-w-md mx-auto px-2">
+              <div className="flex items-center justify-around">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    className={`flex flex-col items-center py-3 px-2 relative ${
+                      pathname?.startsWith(item.path)
+                        ? 'text-purple-400'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    {/* Active Indicator */}
+                    {pathname?.startsWith(item.path) && (
+                      <motion.div
+                        layoutId="bottomNav"
+                        className="absolute -top-[1px] left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-cyan-500"
+                      />
+                    )}
+                    <item.icon size={20} className="mb-1" />
+                    <span className="text-[10px] font-medium">{item.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* iOS Safe Area */}
+          <div className="h-[env(safe-area-inset-bottom)] bg-black/80" />
+        </div>
+      </>
     );
   }
   
