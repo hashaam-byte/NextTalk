@@ -7,9 +7,7 @@ const nextConfig = {
     ignoreDuringBuilds: true
   },
   experimental: {
-    serverActions: {
-      allowedOrigins: ['localhost:3000']
-    },
+    missingSuspenseWithCSRError: false
   },
   images: {
     domains: [
