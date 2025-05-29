@@ -55,13 +55,7 @@ const EMOJI_CATEGORIES = [
   }
 ];
 
-const EmojiPicker: React.FC<EmojiPickerProps> = ({
-  onEmojiSelect,
-  isOpen,
-  onClose,
-  recentLimit = 16,
-  theme = 'auto'
-}) => {
+export default function EmojiPicker({ onEmojiSelect, isOpen, onClose }) {
   const [currentCategory, setCurrentCategory] = useState(EMOJI_CATEGORIES[0].name);
   const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -193,115 +187,67 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
   const currentEmojis = getCurrentEmojis();
   
   return (
-    <AnimatePresence>
-      <motion.div
-        ref={pickerRef}
-        className={`emoji-picker fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden ${getThemeClass()}`}
-        style={{ width: '320px', height: '400px' }}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ duration: 0.15 }}
-      >
-        {/* Header */}
-        <div className="emoji-picker-header flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Emoji Picker</h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+    <div className="h-full flex flex-col bg-black/90 backdrop-blur-lg rounded-t-xl overflow-hidden">
+      {/* Tabs for Emojis/Stickers/GIFs */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+        <div className="flex space-x-4">
+          <button className="text-white border-b-2 border-purple-500 px-2 py-1">Emojis</button>
+          <button className="text-gray-400 hover:text-white px-2 py-1">Stickers</button>
+          <button className="text-gray-400 hover:text-white px-2 py-1">GIFs</button>
+        </div>
+        <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="p-2 border-b border-white/10">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search emojis..."
+            className="w-full bg-white/10 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-400"
+          />
+        </div>
+      </div>
+
+      {/* Categories */}
+      <div className="flex overflow-x-auto p-2 border-b border-white/10">
+        {EMOJI_CATEGORIES.map((category) => (
+          <button
+            key={category.name}
+            onClick={() => {
+              setCurrentCategory(category.name);
+              setSearchQuery('');
+            }}
+            className={`flex-shrink-0 p-2 rounded-md transition ${
+              currentCategory === category.name && searchQuery === '' 
+                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' 
+                : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title={category.name}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <span className="text-xl">{category.icon}</span>
           </button>
-        </div>
-        
-        {/* Search */}
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative">
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search emojis..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full py-2 pl-8 pr-4 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        
-        {/* Skin tone selector */}
-        <div className="flex items-center justify-end px-3 py-1 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex space-x-1">
-            <button 
-              onClick={() => setSelectedSkinTone(0)}
-              className={`w-5 h-5 rounded-full ${selectedSkinTone === 0 ? 'ring-2 ring-blue-500' : ''}`}
-              style={{ backgroundColor: '#FFCC22' }}
-            />
-            {skinTones.map((_, index) => (
-              <button 
-                key={index}
-                onClick={() => setSelectedSkinTone(index + 1)}
-                className={`w-5 h-5 rounded-full ${selectedSkinTone === index + 1 ? 'ring-2 ring-blue-500' : ''}`}
-                style={{ backgroundColor: ['#F7DECE', '#E0BB95', '#BF8F68', '#9B643D', '#594539'][index] }}
-              />
-            ))}
-          </div>
-        </div>
-        
-        {/* Categories */}
-        <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-          {EMOJI_CATEGORIES.map(category => (
+        ))}
+      </div>
+
+      {/* Emoji Grid */}
+      <div className="flex-1 overflow-y-auto p-2">
+        <div className="grid grid-cols-8 gap-1">
+          {getCurrentEmojis().map((emoji) => (
             <button
-              key={category.name}
-              onClick={() => {
-                setCurrentCategory(category.name);
-                setSearchQuery('');
-              }}
-              className={`flex-shrink-0 p-2 rounded-md transition ${
-                currentCategory === category.name && searchQuery === '' 
-                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' 
-                  : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-              title={category.name}
+              key={emoji}
+              onClick={() => handleEmojiClick(applySkinTone(emoji))}
+              className="flex items-center justify-center p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
             >
-              <span className="text-xl">{category.icon}</span>
+              <span className="text-2xl">{applySkinTone(emoji)}</span>
             </button>
           ))}
         </div>
-        
-        {/* Emoji grid */}
-        <div className="emoji-grid p-2 overflow-y-auto" style={{ height: 'calc(100% - 170px)' }}>
-          {currentEmojis.length > 0 ? (
-            <div className="grid grid-cols-7 gap-1">
-              {currentEmojis.map((emoji, index) => (
-                <button
-                  key={`${emoji}-${index}`}
-                  onClick={() => handleEmojiClick(applySkinTone(emoji))}
-                  className="flex items-center justify-center p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                >
-                  <span className="text-2xl">{applySkinTone(emoji)}</span>
-                </button>
-              ))}
-            </div>
-          ) : searchQuery ? (
-            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-              No emojis found for "{searchQuery}"
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-              No emojis in this category
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </AnimatePresence>
+      </div>
+    </div>
   );
-};
-
-export default EmojiPicker;
+}

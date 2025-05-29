@@ -3,13 +3,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Smile, Video, Phone, MoreVertical, Copy, Forward, Star, Pin, Trash2, Flag, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Send, Smile, Video, Phone, MoreVertical, Copy, Forward, Star, Pin, Trash2, Flag, Image as ImageIcon, MessageSquare, Play, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import EmojiPicker from '@/components/chat/EmojiPicker';
+import StickerPicker from '@/components/chat/StickerPicker';
+import GifPicker from '@/components/chat/GifPicker';
 import { useCall } from '@/hooks/useCall';
 import CallOverlay from '@/components/call/CallOverlay';
 import ContactDrawer from '@/components/chat/ContactDrawer';
+import { videoClient } from '@/lib/stream';
+
+const PICKER_ITEMS = [
+  { type: 'emoji', icon: '😊', label: 'Emojis' },
+  { type: 'sticker', icon: '🎯', label: 'Stickers' },
+  { type: 'gif', icon: '🎬', label: 'GIFs' }
+] as const;
 
 interface Message {
   id: string;
@@ -74,6 +83,7 @@ export default function ChatPage() {
   const messageActionsRef = useRef<HTMLDivElement>(null);
   const [messageActionsPosition, setMessageActionsPosition] = useState({ x: 0, y: 0 });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'message' | 'emoji' | 'sticker' | 'gif'>('message');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [incomingCall, setIncomingCall] = useState<CallNotification | null>(null);
   const [activeCall, setActiveCall] = useState<{
@@ -83,6 +93,8 @@ export default function ChatPage() {
     startTime?: Date;
   } | null>(null);
   const call = useCall(global.io);
+  const [expressionType, setExpressionType] = useState<'emoji' | 'sticker' | 'gif' | null>(null);
+  const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -284,12 +296,13 @@ export default function ChatPage() {
     };
   }, []);
 
-  const sendMessage = async () => {
-    if (!message.trim()) return;
+  const sendMessage = async (msgContent?: string) => {
+    const content = msgContent || message;
+    if (!content.trim()) return;
 
     const newMessage = {
       id: Date.now().toString(),
-      content: message,
+      content,
       senderId: session?.user?.id,
       timestamp: new Date()
     };
@@ -301,7 +314,7 @@ export default function ChatPage() {
       const response = await fetch(`/api/chat/${chatId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: message }),
+        body: JSON.stringify({ content }),
       });
 
       if (!response.ok) {
@@ -390,8 +403,36 @@ export default function ChatPage() {
   };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
-    if (chatId) {
-      await call.initializeCall(chatId, type);
+    if (!chatId || !session?.user) return;
+
+    try {
+      // Create a unique call ID
+      const callId = `${chatId}-${Date.now()}`;
+      
+      // Initialize call with Stream
+      const call = videoClient.call('default', callId);
+      
+      // Join the call
+      await call.join({ create: true });
+      
+      // Notify other user through your API
+      await fetch(`/api/chat/${chatId}/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          callId,
+          type,
+          callerId: session.user.id,
+        }),
+      });
+
+      setActiveCall({
+        id: callId,
+        type,
+        status: 'ongoing'
+      });
+    } catch (error) {
+      console.error('Error starting call:', error);
     }
   };
 
@@ -468,6 +509,30 @@ export default function ChatPage() {
     } catch (error) {
       console.error('Error reporting contact:', error);
     }
+  };
+
+  const handleExpressionSelect = (type: 'emoji' | 'sticker' | 'gif', content: string) => {
+    let messageContent = '';
+    switch (type) {
+      case 'emoji':
+        messageContent = content;
+        break;
+      case 'sticker':
+        messageContent = `[sticker:${content}]`;
+        break;
+      case 'gif':
+        messageContent = `[gif:${content}]`;
+        break;
+    }
+    sendMessage(messageContent);
+    setExpressionType(null);
+  };
+
+  const handleExpressionButtonClick = (type: 'emoji' | 'sticker' | 'gif', event: React.MouseEvent) => {
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    setPickerPosition({ x: rect.left, y: rect.top - 450 }); // Adjust 450 based on your picker height
+    setExpressionType(prev => prev === type ? null : type);
   };
 
   return (
@@ -676,53 +741,130 @@ export default function ChatPage() {
         </div>
       </div>
 
+      {/* Expression Picker Overlay */}
+      <AnimatePresence>
+        {expressionType && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed z-50"
+            style={{
+              left: pickerPosition.x,
+              top: pickerPosition.y,
+              width: '350px'
+            }}
+          >
+            <div className="bg-gray-900/95 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl">
+              {/* Picker Navigation */}
+              <div className="flex border-b border-white/10">
+                {PICKER_ITEMS.map((item) => (
+                  <button
+                    key={item.type}
+                    onClick={() => setExpressionType(item.type)}
+                    className={`flex-1 py-2 text-sm font-medium ${
+                      expressionType === item.type
+                        ? 'text-purple-400 border-b-2 border-purple-400'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <span className="mr-2">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                {expressionType === 'emoji' && (
+                  <EmojiPicker
+                    onEmojiSelect={(emoji) => handleExpressionSelect('emoji', emoji)}
+                    isOpen={true}
+                    onClose={() => setExpressionType(null)}
+                  />
+                )}
+                {expressionType === 'sticker' && (
+                  <StickerPicker
+                    onStickerSelect={(sticker) => handleExpressionSelect('sticker', sticker)}
+                    isOpen={true}
+                    onClose={() => setExpressionType(null)}
+                  />
+                )}
+                {expressionType === 'gif' && (
+                  <GifPicker
+                    onGifSelect={(gif) => handleExpressionSelect('gif', gif)}
+                    isOpen={true}
+                    onClose={() => setExpressionType(null)}
+                  />
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Fixed Bottom Input Section */}
-      <div className="sticky bottom-0 z-30 bg-black/20 backdrop-blur-lg border-t border-white/10 p-3 sm:p-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage();
-          }}
-          className="flex items-center space-x-2"
-        >
-          {/* Emoji Picker */}
-          <div className="relative">
+      <div className="sticky bottom-0 z-30 bg-black/20 backdrop-blur-lg border-t border-white/10 p-3">
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
             <button
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400"
+              onClick={(e) => handleExpressionButtonClick('emoji', e)}
+              className={`p-2 rounded-full transition-colors ${
+                expressionType === 'emoji' 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'text-gray-400 hover:bg-white/10'
+              }`}
             >
               <Smile size={20} />
             </button>
-            {showEmojiPicker && (
-              <div className="absolute bottom-full mb-2 left-0">
-                <EmojiPicker
-                  onEmojiSelect={handleEmojiSelect}
-                  isOpen={showEmojiPicker}
-                  onClose={() => setShowEmojiPicker(false)}
-                />
-              </div>
-            )}
+            <button
+              onClick={(e) => handleExpressionButtonClick('sticker', e)}
+              className={`p-2 rounded-full transition-colors ${
+                expressionType === 'sticker' 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              <MessageSquare size={20} />
+            </button>
+            <button
+              onClick={(e) => handleExpressionButtonClick('gif', e)}
+              className={`p-2 rounded-full transition-colors ${
+                expressionType === 'gif' 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              <Plus size={20} />
+            </button>
           </div>
-          
-          {/* Message Input */}
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
-          />
-          
-          {/* Send Button */}
-          <button
-            type="submit"
-            disabled={!message.trim()}
-            className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-50"
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendMessage();
+            }}
+            className="flex items-center space-x-2 flex-1"
           >
-            <Send size={20} />
-          </button>
-        </form>
+            {/* Message Input */}
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
+            />
+            
+            {/* Send Button */}
+            <button
+              type="submit"
+              disabled={!message.trim()}
+              className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-50"
+            >
+              <Send size={20} />
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Message Actions Menu */}

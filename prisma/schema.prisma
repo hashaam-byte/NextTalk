@@ -51,6 +51,7 @@ model User {
   posts                 Post[]           @relation("UserPosts")
   likes                 Like[]
   comments              Comment[]
+  media                 UserMedia[] // Add this line for the opposite relation
 }
 
 model Chat {
@@ -96,19 +97,19 @@ model Participant {
 }
 
 model Notification {
-  id          String    @id @default(cuid())
-  type        String
-  content     String
-  userId      String
-  senderId    String?   // Changed from fromUserId to senderId to match the model
-  groupId     String?
-  read        Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  type      String
+  content   String
+  userId    String
+  senderId  String? // Changed from fromUserId to senderId to match the model
+  groupId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user        User      @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  sender      User?     @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
-  group       Group?    @relation("GroupNotifications", fields: [groupId], references: [id], onDelete: Cascade)
+  user   User   @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sender User?  @relation("SentNotifications", fields: [senderId], references: [id], onDelete: SetNull)
+  group  Group? @relation("GroupNotifications", fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([senderId])
@@ -191,18 +192,18 @@ model UserSettings {
 }
 
 model Post {
-  id          String      @id @default(cuid())
-  mediaUrl    String      // Required field for storing media URL
-  mediaType   String      // 'IMAGE' or 'VIDEO'
-  caption     String?     // Optional caption
-  visibility  String      @default("public") // 'public', 'private', 'contacts'
-  viewersIds  String[]    // Array of user IDs who can view private posts
-  userId      String      // ID of user who created the post
-  user        User        @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
-  likes       Like[]
-  comments    Comment[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         String    @id @default(cuid())
+  mediaUrl   String // Required field for storing media URL
+  mediaType  String // 'IMAGE' or 'VIDEO'
+  caption    String? // Optional caption
+  visibility String    @default("public") // 'public', 'private', 'contacts'
+  viewersIds String[] // Array of user IDs who can view private posts
+  userId     String // ID of user who created the post
+  user       User      @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
+  likes      Like[]
+  comments   Comment[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([userId])
 }
@@ -228,18 +229,18 @@ enum CallType {
 }
 
 model Call {
-  id          String      @id @default(cuid())
-  type        String      // 'audio' or 'video'
-  status      String      // 'missed', 'completed', 'rejected'
-  startTime   DateTime?
-  endTime     DateTime?
-  duration    Int?
-  callerId    String
-  caller      User        @relation("CallerCalls", fields: [callerId], references: [id])
-  receiverId  String
-  receiver    User        @relation("ReceiverCalls", fields: [receiverId], references: [id])
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         String    @id @default(cuid())
+  type       String // 'audio' or 'video'
+  status     String // 'missed', 'completed', 'rejected'
+  startTime  DateTime?
+  endTime    DateTime?
+  duration   Int?
+  callerId   String
+  caller     User      @relation("CallerCalls", fields: [callerId], references: [id])
+  receiverId String
+  receiver   User      @relation("ReceiverCalls", fields: [receiverId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([callerId])
   @@index([receiverId])
@@ -270,4 +271,18 @@ model Comment {
 
   @@index([userId])
   @@index([postId])
+}
+
+model UserMedia {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  type      String   // 'sticker' or 'gif'
+  fileType  String   // MIME type of the file
+  createdAt DateTime @default(now())
+  useCount  Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type, useCount])
 }
