@@ -1,74 +1,57 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/lib/authConfig';
+import { StreamVideoClient } from '@stream-io/video-client';
 
-export async function POST(req: Request) {
+const streamClient = StreamVideoClient.getInstance(
+  process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!
+);
+
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { type, receiverId, roomId } = await req.json();
-
-    // Find caller
-    const caller = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!caller) {
-      return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
-    }
-
-    // Verify receiver exists
-    const receiver = await prisma.user.findUnique({
-      where: { id: receiverId }
-    });
-
-    if (!receiver) {
-      return NextResponse.json({ error: 'Receiver not found' }, { status: 404 });
-    }
+    const { type, receiverId, chatId } = await request.json();
 
     // Create call record
     const call = await prisma.call.create({
       data: {
         type,
-        status: 'ringing',
-        roomId,
-        callerId: caller.id,
-        receiverId: receiver.id,
-        startedAt: new Date(),
-      },
-      include: {
-        caller: {
-          select: {
-            id: true,
-            name: true,
-            profileImage: true
-          }
-        }
+        status: 'initiated',
+        callerId: session.user.id,
+        receiverId,
+        chatId,
       }
     });
 
-    // Emit socket event for incoming call
-    if (global.io) {
-      global.io.to(receiver.id).emit('call:incoming', {
-        callId: call.id,
-        type: call.type,
-        roomId: call.roomId,
-        caller: {
-          id: caller.id,
-          name: caller.name,
-          image: caller.profileImage
-        }
-      });
-    }
+    // Create notification
+    await prisma.notification.create({
+      data: {
+        userId: receiverId,
+        type: 'CALL',
+        content: `Incoming ${type} call`,
+        senderId: session.user.id,
+        chatId,
+      }
+    });
 
-    return NextResponse.json({ call });
+    // Generate Stream token
+    const streamToken = streamClient.createToken(session.user.id);
+
+    return NextResponse.json({ 
+      callId: call.id,
+      streamToken 
+    });
+
   } catch (error) {
-    console.error('[CALLS_POST]', error);
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    console.error('Call error:', error);
+    return NextResponse.json(
+      { error: 'Failed to initiate call' }, 
+      { status: 500 }
+    );
   }
 }
 

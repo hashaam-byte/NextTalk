@@ -13,6 +13,8 @@ import { useCall } from '@/hooks/useCall';
 import CallOverlay from '@/components/call/CallOverlay';
 import ContactDrawer from '@/components/chat/ContactDrawer';
 import { videoClient } from '@/lib/stream';
+import CallConfirmDialog from '@/components/chat/CallConfirmDialog';
+import { StreamVideo, StreamCall } from '@stream-io/video-react-sdk';
 
 const PICKER_ITEMS = [
   { type: 'emoji', icon: '😊', label: 'Emojis' },
@@ -95,6 +97,8 @@ export default function ChatPage() {
   const call = useCall(global.io);
   const [expressionType, setExpressionType] = useState<'emoji' | 'sticker' | 'gif' | null>(null);
   const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
+  const [showCallConfirm, setShowCallConfirm] = useState(false);
+  const [pendingCallType, setPendingCallType] = useState<'audio' | 'video' | null>(null);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -403,78 +407,49 @@ export default function ChatPage() {
   };
 
   const handleStartCall = async (type: 'audio' | 'video') => {
-    if (!chatId || !session?.user) return;
+    setPendingCallType(type);
+    setShowCallConfirm(true);
+  };
+
+  const handleConfirmCall = async () => {
+    if (!pendingCallType || !chatInfo || !session?.user) return;
 
     try {
-      // Create a unique call ID
-      const callId = `${chatId}-${Date.now()}`;
-      
-      // Initialize call with Stream
-      const call = videoClient.call('default', callId);
-      
-      // Join the call
-      await call.join({ create: true });
-      
-      // Notify other user through your API
-      await fetch(`/api/chat/${chatId}/call`, {
+      // Create call record in database
+      const response = await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          callId,
-          type,
-          callerId: session.user.id,
+          type: pendingCallType,
+          receiverId: chatInfo.id,
+          chatId: chatId,
         }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create call');
+      
+      const { callId, streamToken } = await response.json();
+
+      // Initialize Stream call
+      const streamCall = await streamClient.call('default', callId);
+      await streamCall.getOrCreate({ 
+        members: [session.user.id, chatInfo.id],
+        options: { ring: true }
       });
 
       setActiveCall({
         id: callId,
-        type,
+        type: pendingCallType,
         status: 'ongoing'
       });
+
     } catch (error) {
       console.error('Error starting call:', error);
+      // Show error notification
+    } finally {
+      setShowCallConfirm(false);
+      setPendingCallType(null);
     }
-  };
-
-  const handleAnswerCall = async (accepted: boolean) => {
-    if (!incomingCall?.callId) return;
-
-    try {
-      await fetch(`/api/calls/${incomingCall.callId}/answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accepted })
-      });
-
-      if (accepted) {
-        setActiveCall({
-          id: incomingCall.callId,
-          type: incomingCall.type,
-          status: 'ongoing'
-        });
-      }
-      setIncomingCall(null);
-    } catch (error) {
-      console.error('Error answering call:', error);
-    }
-  };
-
-  const handleDeclineCall = () => {
-    // Emit socket event to decline call
-    if (global.io) {
-      global.io.emit('call:answer', {
-        accepted: false
-      });
-    }
-    setActiveCall(null);
-  };
-
-  const handleEndCall = () => {
-    // Emit socket event to end call
-    if (global.io) {
-      global.io.emit('call:end');
-    }
-    setActiveCall(null);
   };
 
   // Handle contact actions
@@ -957,6 +932,21 @@ export default function ChatPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Call Confirm Dialog */}
+      <CallConfirmDialog
+        isOpen={showCallConfirm}
+        type={pendingCallType || 'audio'}
+        contact={{
+          name: chatInfo?.name || 'User',
+          avatar: chatInfo?.avatar
+        }}
+        onConfirm={handleConfirmCall}
+        onCancel={() => {
+          setShowCallConfirm(false);
+          setPendingCallType(null);
+        }}
+      />
     </div>
   );
 }

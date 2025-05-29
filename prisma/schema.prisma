@@ -8,50 +8,48 @@ datasource db {
 }
 
 model User {
-  id                    String           @id @default(cuid())
+  id                    String            @id @default(cuid())
   name                  String?
-  email                 String           @unique
+  email                 String            @unique
   password              String
   phone                 String?
   profileImage          String?
   bio                   String?
-  status                String           @default("offline") // "online", "offline", "away", "busy"
+  status                String            @default("offline") // "online", "offline", "away", "busy"
   lastSeen              DateTime?
-  lastActive            DateTime?        @default(now()) // Last activity timestamp
-  isTyping              Boolean          @default(false) // Typing status
+  lastActive            DateTime?         @default(now()) // Last activity timestamp
+  isTyping              Boolean           @default(false) // Typing status
   typingInChat          String? // ChatId where user is typing
   deviceId              String? // For handling multiple device sessions
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  messages              Message[]        @relation("UserMessages")
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  messages              Message[]         @relation("UserMessages")
   participants          Participant[]
-  receivedNotifications Notification[]   @relation("UserNotifications")
-  sentNotifications     Notification[]   @relation("SentNotifications")
-  contacts              User[]           @relation("UserContacts")
-  contactOf             User[]           @relation("UserContacts")
-  sentRequests          ContactRequest[] @relation("SentRequests")
-  receivedRequests      ContactRequest[] @relation("ReceivedRequests")
-  theme                 String           @default("dark")
-  language              String           @default("en")
-  notifications         Boolean          @default(true)
-  soundEnabled          Boolean          @default(true)
-  privacyLevel          String           @default("friends") // "public", "friends", "private"
-  readReceipts          Boolean          @default(true)
+  receivedNotifications Notification[]    @relation("UserNotifications")
+  sentNotifications     Notification[]    @relation("SentNotifications")
+  contacts              User[]            @relation("UserContacts")
+  contactOf             User[]            @relation("UserContacts")
+  sentRequests          ContactRequest[]  @relation("SentRequests")
+  receivedRequests      ContactRequest[]  @relation("ReceivedRequests")
+  theme                 String            @default("dark")
+  language              String            @default("en")
+  notifications         Boolean           @default(true)
+  soundEnabled          Boolean           @default(true)
+  privacyLevel          String            @default("friends") // "public", "friends", "private"
+  readReceipts          Boolean           @default(true)
   groups                GroupMember[]
-  ownedGroups           Group[]          @relation("GroupOwner")
+  ownedGroups           Group[]           @relation("GroupOwner")
   groupMessages         GroupMessage[]
   settings              UserSettings?
-  outgoingCalls         Call[]           @relation("CallerCalls")
-  incomingCalls         Call[]           @relation("ReceiverCalls")
-  blockedUsers          User[]           @relation("BlockedUsers")
-  blockedBy             User[]           @relation("BlockedUsers")
-  mutedChats            String[] // Array of chat IDs that are muted
-  resetToken            String?          @db.Text
-  resetTokenExpiry      DateTime?
-  posts                 Post[]           @relation("UserPosts")
+  outgoingCalls         Call[]            @relation("UserOutgoingCalls")
+  incomingCalls         Call[]            @relation("UserIncomingCalls")
+  callParticipations    CallParticipant[]
+  callMessages          CallMessage[]
+  callMetrics           CallMetric[]
+  posts                 Post[]
   likes                 Like[]
   comments              Comment[]
-  media                 UserMedia[] // Add this line for the opposite relation
+  media                 UserMedia[]
 }
 
 model Chat {
@@ -66,6 +64,8 @@ model Chat {
   updatedAt    DateTime      @updatedAt
   messages     Message[]     @relation("ChatMessages")
   participants Participant[]
+
+  calls Call[]
 }
 
 model Message {
@@ -192,58 +192,17 @@ model UserSettings {
 }
 
 model Post {
-  id         String    @id @default(cuid())
-  mediaUrl   String // Required field for storing media URL
-  mediaType  String // 'IMAGE' or 'VIDEO'
-  caption    String? // Optional caption
-  visibility String    @default("public") // 'public', 'private', 'contacts'
-  viewersIds String[] // Array of user IDs who can view private posts
-  userId     String // ID of user who created the post
-  user       User      @relation("UserPosts", fields: [userId], references: [id], onDelete: Cascade)
-  likes      Like[]
-  comments   Comment[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id        String    @id @default(cuid())
+  content   String
+  mediaUrl  String?
+  userId    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes     Like[]
+  comments  Comment[]
 
   @@index([userId])
-}
-
-enum MediaType {
-  IMAGE
-  VIDEO
-  AUDIO
-  DOCUMENT
-}
-
-enum CallStatus {
-  RINGING
-  ONGOING
-  ENDED
-  MISSED
-  REJECTED
-}
-
-enum CallType {
-  AUDIO
-  VIDEO
-}
-
-model Call {
-  id         String    @id @default(cuid())
-  type       String // 'audio' or 'video'
-  status     String // 'missed', 'completed', 'rejected'
-  startTime  DateTime?
-  endTime    DateTime?
-  duration   Int?
-  callerId   String
-  caller     User      @relation("CallerCalls", fields: [callerId], references: [id])
-  receiverId String
-  receiver   User      @relation("ReceiverCalls", fields: [receiverId], references: [id])
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  @@index([callerId])
-  @@index([receiverId])
 }
 
 model Like {
@@ -277,12 +236,116 @@ model UserMedia {
   id        String   @id @default(cuid())
   userId    String
   url       String
-  type      String   // 'sticker' or 'gif'
-  fileType  String   // MIME type of the file
-  createdAt DateTime @default(now())
+  type      String // 'image', 'video', 'sticker', 'gif'
+  fileType  String // MIME type
   useCount  Int      @default(0)
-  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([type, useCount])
+  @@index([type])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum CallStatus {
+  RINGING
+  ONGOING
+  ENDED
+  MISSED
+  REJECTED
+}
+
+enum CallType {
+  AUDIO
+  VIDEO
+}
+
+model Call {
+  id           String    @id @default(cuid())
+  type         String // 'audio' or 'video'
+  status       String // 'initiated', 'ringing', 'ongoing', 'ended', 'missed', 'declined'
+  startTime    DateTime  @default(now())
+  endTime      DateTime?
+  duration     Int? // in seconds
+  quality      Int? // call quality score 1-5
+  streamCallId String? // Stream service call identifier
+  streamToken  String? // Stream service token
+  recording    Boolean   @default(false)
+  recordingUrl String?
+  screenshare  Boolean   @default(false)
+
+  callerId   String
+  caller     User   @relation("UserOutgoingCalls", fields: [callerId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User   @relation("UserIncomingCalls", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  participants CallParticipant[]
+  messages     CallMessage[]
+  metrics      CallMetric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([chatId])
+  @@index([callerId])
+  @@index([receiverId])
+  @@index([status])
+  @@index([type])
+}
+
+model CallParticipant {
+  id             String    @id @default(cuid())
+  callId         String
+  userId         String
+  joinTime       DateTime  @default(now())
+  leaveTime      DateTime?
+  duration       Int? // time spent in call (seconds)
+  audio          Boolean   @default(true)
+  video          Boolean   @default(false)
+  screenshare    Boolean   @default(false)
+  networkQuality Int? // 1-5 rating
+  call           Call      @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@index([userId])
+}
+
+model CallMessage {
+  id        String   @id @default(cuid())
+  callId    String
+  userId    String
+  content   String
+  type      String // 'chat', 'system', 'reaction'
+  createdAt DateTime @default(now())
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@index([userId])
+}
+
+model CallMetric {
+  id        String   @id @default(cuid())
+  callId    String
+  userId    String
+  type      String // 'quality', 'latency', 'bandwidth', 'error'
+  value     String // JSON string containing metric data
+  timestamp DateTime @default(now())
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@index([userId])
+  @@index([type])
+  @@index([timestamp])
 }
