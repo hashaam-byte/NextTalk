@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { StreamClient } from '@stream-io/video-client';
+import { StreamVideoClient } from '@stream-io/video-client';
 
-// Initialize Stream client
-const streamClient = new StreamClient({
+// Initialize Stream Video client with server configuration
+const streamVideo = new StreamVideoClient({
   apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
-  token: process.env.STREAM_VIDEO_SECRET!, // Server-side token
-  user: {
-    id: 'server',
-  },
+  secret: process.env.STREAM_VIDEO_SECRET!,
+  userId: 'server', // Server-side user ID
 });
 
 export async function POST(request: NextRequest) {
@@ -32,8 +30,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Create Stream call token
-    const streamToken = streamClient.createToken(session.user.id);
+    // Generate Stream call token for the user
+    const token = streamVideo.createToken(session.user.id);
 
     // Create notification
     await prisma.notification.create({
@@ -48,7 +46,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       callId: call.id,
-      streamToken 
+      token,
+      apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY
     });
 
   } catch (error) {
