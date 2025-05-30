@@ -1,70 +1,48 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authConfig';
 import { prisma } from '@/lib/prisma';
 import { StreamVideoClient } from '@stream-io/video-client';
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
+    // Get session with authOptions
+    const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
-      console.log('No authenticated session found');
+      console.log('Session:', session);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    });
+
+    if (!user) {
+      console.log('User not found for email:', session.user.email);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const body = await request.json();
     const { type, receiverId, chatId } = body;
 
-    // Validate input
+    // Validate required fields
     if (!type || !receiverId || !chatId) {
+      console.log('Missing fields:', { type, receiverId, chatId });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Find current user
-    const caller = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!caller) {
-      return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
-    }
-
-    // Verify receiver exists
-    const receiver = await prisma.user.findUnique({
-      where: { id: receiverId }
-    });
-
-    if (!receiver) {
-      return NextResponse.json({ error: 'Receiver not found' }, { status: 404 });
-    }
-
-    // Verify chat exists and both users are participants
-    const chat = await prisma.chat.findFirst({
-      where: {
-        id: chatId,
-        participants: {
-          some: {
-            userId: {
-              in: [caller.id, receiverId]
-            }
-          }
-        }
-      }
-    });
-
-    if (!chat) {
-      return NextResponse.json({ error: 'Chat not found or unauthorized' }, { status: 404 });
-    }
-
-    // Create call record with transaction
+    // Create call using transaction
     const call = await prisma.$transaction(async (tx) => {
-      // Create call
+      // Create call record
       const newCall = await tx.call.create({
         data: {
           type,
           status: 'initiated',
-          callerId: caller.id,
-          receiverId: receiver.id,
+          callerId: user.id,
+          receiverId,
           chatId,
           startTime: new Date(),
         }
@@ -75,23 +53,23 @@ export async function POST(request: Request) {
         data: {
           type: 'CALL',
           content: `Incoming ${type} call`,
-          userId: receiver.id,
-          senderId: caller.id,
-          chatId: chat.id
+          userId: receiverId,
+          senderId: user.id,
+          chatId
         }
       });
 
       return newCall;
     });
 
-    // Initialize Stream call
+    // Initialize Stream Video client
     const streamClient = new StreamVideoClient({
       apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
       token: process.env.STREAM_VIDEO_SECRET!,
-      userId: 'server',
+      userId: user.id,
     });
 
-    const streamToken = streamClient.createToken(caller.id);
+    const streamToken = streamClient.createToken(user.id);
 
     return NextResponse.json({
       success: true,
@@ -100,11 +78,15 @@ export async function POST(request: Request) {
       apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Call initiation error:', error);
     return NextResponse.json(
-      { error: 'Failed to initiate call', details: error.message },
-      { status: 500 }
+      { 
+        error: 'Failed to initiate call', 
+        details: error.message,
+        code: error.code 
+      }, 
+      { status: error.code === 'P2025' ? 404 : 500 }
     );
   }
 }
