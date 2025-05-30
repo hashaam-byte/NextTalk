@@ -1,82 +1,109 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authConfig';
 import { prisma } from '@/lib/prisma';
 import { StreamVideoClient } from '@stream-io/video-client';
 
-// Initialize Stream Video client
-const streamVideo = new StreamVideoClient({
-  apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
-  token: process.env.STREAM_VIDEO_SECRET!,
-  userId: 'server',
-});
-
 export async function POST(request: Request) {
   try {
-    // Get session with auth options
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     if (!session?.user?.email) {
-      console.error('Unauthorized: No session or email');
+      console.log('No authenticated session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      console.error('User not found:', session.user.email);
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const body = await request.json();
     const { type, receiverId, chatId } = body;
 
+    // Validate input
     if (!type || !receiverId || !chatId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Create call record
-    const call = await prisma.call.create({
-      data: {
-        type,
-        status: 'initiated',
-        callerId: user.id,
-        receiverId,
-        chatId,
-        startTime: new Date(),
+    // Find current user
+    const caller = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!caller) {
+      return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
+    }
+
+    // Verify receiver exists
+    const receiver = await prisma.user.findUnique({
+      where: { id: receiverId }
+    });
+
+    if (!receiver) {
+      return NextResponse.json({ error: 'Receiver not found' }, { status: 404 });
+    }
+
+    // Verify chat exists and both users are participants
+    const chat = await prisma.chat.findFirst({
+      where: {
+        id: chatId,
+        participants: {
+          some: {
+            userId: {
+              in: [caller.id, receiverId]
+            }
+          }
+        }
       }
     });
 
-    // Generate Stream call token
-    const token = streamVideo.createToken(user.id);
+    if (!chat) {
+      return NextResponse.json({ error: 'Chat not found or unauthorized' }, { status: 404 });
+    }
 
-    // Create notification
-    await prisma.notification.create({
-      data: {
-        userId: receiverId,
-        type: 'CALL',
-        content: `Incoming ${type} call`,
-        senderId: user.id,
-      }
+    // Create call record with transaction
+    const call = await prisma.$transaction(async (tx) => {
+      // Create call
+      const newCall = await tx.call.create({
+        data: {
+          type,
+          status: 'initiated',
+          callerId: caller.id,
+          receiverId: receiver.id,
+          chatId,
+          startTime: new Date(),
+        }
+      });
+
+      // Create notification
+      await tx.notification.create({
+        data: {
+          type: 'CALL',
+          content: `Incoming ${type} call`,
+          userId: receiver.id,
+          senderId: caller.id,
+          chatId: chat.id
+        }
+      });
+
+      return newCall;
     });
+
+    // Initialize Stream call
+    const streamClient = new StreamVideoClient({
+      apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
+      token: process.env.STREAM_VIDEO_SECRET!,
+      userId: 'server',
+    });
+
+    const streamToken = streamClient.createToken(caller.id);
 
     return NextResponse.json({
       success: true,
       callId: call.id,
-      token,
+      streamToken,
       apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY
     });
 
   } catch (error) {
     console.error('Call initiation error:', error);
     return NextResponse.json(
-      { error: 'Failed to initiate call' },
+      { error: 'Failed to initiate call', details: error.message },
       { status: 500 }
     );
   }
@@ -84,7 +111,7 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
