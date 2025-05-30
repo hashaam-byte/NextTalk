@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ArrowLeft, UserPlus, Users, Check, X } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
@@ -14,6 +14,19 @@ interface Contact {
   email?: string;
   status?: string;
   lastSeen?: Date | string | null;
+}
+
+interface ContactRequest {
+  id: string;
+  senderId: string;
+  sender: {
+    id: string;
+    name: string;
+    email: string;
+    profileImage?: string;
+  };
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  createdAt: Date;
 }
 
 const formatLastSeen = (lastSeen: Date | string | null | undefined) => {
@@ -29,7 +42,7 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
-  const [contactRequests, setContactRequests] = useState([]);
+  const [contactRequests, setContactRequests] = useState<ContactRequest[]>([]);
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -132,42 +145,46 @@ export default function ContactsPage() {
   };
 
   const handleAcceptRequest = async (requestId: string) => {
-    setLoading(true);
     try {
+      setLoading(true);
       const response = await fetch(`/api/contacts/requests/${requestId}/accept`, {
         method: 'POST',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to accept contact request');
+        throw new Error('Failed to accept request');
       }
 
-      setContactRequests((prev) =>
-        prev.filter((request) => request.id !== requestId)
-      );
+      // Remove the request from the list
+      setContactRequests(prev => prev.filter(req => req.id !== requestId));
+
+      // Show success notification
+      // You can implement your notification system here
     } catch (error) {
-      console.error('Error accepting contact request:', error);
+      console.error('Error accepting request:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleRejectRequest = async (requestId: string) => {
-    setLoading(true);
     try {
+      setLoading(true);
       const response = await fetch(`/api/contacts/requests/${requestId}/reject`, {
         method: 'POST',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to reject contact request');
+        throw new Error('Failed to reject request');
       }
 
-      setContactRequests((prev) =>
-        prev.filter((request) => request.id !== requestId)
-      );
+      // Remove the request from the list
+      setContactRequests(prev => prev.filter(req => req.id !== requestId));
+
+      // Show success notification
+      // You can implement your notification system here
     } catch (error) {
-      console.error('Error rejecting contact request:', error);
+      console.error('Error rejecting request:', error);
     } finally {
       setLoading(false);
     }
@@ -298,33 +315,75 @@ export default function ContactsPage() {
         <h2 className="text-lg font-semibold text-white mb-3">Contact Requests</h2>
         {contactRequests.length > 0 ? (
           <div className="space-y-2">
-            {contactRequests.map((request) => (
-              <div
-                key={request.id}
-                className="flex items-center justify-between p-4 bg-gray-800 rounded-lg"
-              >
-                <div>
-                  <p className="text-white font-medium">{request.senderName}</p>
-                  <p className="text-gray-400 text-sm">{request.senderEmail}</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleAcceptRequest(request.id)}
-                    disabled={loading}
-                    className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition-colors"
-                  >
-                    <Check size={20} className="text-white" />
-                  </button>
-                  <button
-                    onClick={() => handleRejectRequest(request.id)}
-                    disabled={loading}
-                    className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition-colors"
-                  >
-                    <X size={20} className="text-white" />
-                  </button>
-                </div>
-              </div>
-            ))}
+            <AnimatePresence>
+              {contactRequests.map((request) => (
+                <motion.div
+                  key={request.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="bg-gray-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10">
+                          {request.sender.profileImage ? (
+                            <Image
+                              src={request.sender.profileImage}
+                              alt={request.sender.name}
+                              width={48}
+                              height={48}
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white text-lg">
+                              {request.sender.name[0]}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-white font-medium">{request.sender.name}</h3>
+                        <p className="text-gray-400 text-sm">{request.sender.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleAcceptRequest(request.id)}
+                        disabled={loading}
+                        className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-lg transition-colors"
+                      >
+                        <Check size={20} />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleRejectRequest(request.id)}
+                        disabled={loading}
+                        className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                      >
+                        <X size={20} />
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+
+              {contactRequests.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12"
+                >
+                  <UserPlus size={40} className="mx-auto text-gray-600 mb-4" />
+                  <p className="text-gray-400">No pending contact requests</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         ) : (
           <p className="text-gray-400 text-sm text-center py-2">No new contact requests</p>

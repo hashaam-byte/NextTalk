@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Bell, UserPlus, MessageSquare, Users, ArrowLeft, Check, X } from 'lucide-react';
 
 interface Notification {
@@ -17,9 +17,6 @@ interface Notification {
     name: string;
     profileImage: string | null;
   };
-  priority?: 'high' | 'medium' | 'low';
-  actionUrl?: string;
-  category?: string;
 }
 
 export default function NotificationsPage() {
@@ -63,19 +60,6 @@ export default function NotificationsPage() {
       );
     } catch (error) {
       console.error('Error marking notification as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await fetch('/api/notifications/mark-all-read', {
-        method: 'POST'
-      });
-      setNotifications(prev => 
-        prev.map(notif => ({ ...notif, read: true }))
-      );
-    } catch (error) {
-      console.error('Error marking notifications as read:', error);
     }
   };
 
@@ -154,140 +138,70 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 sm:p-6">
-      {/* Enhanced Header Section */}
-      <div className="max-w-4xl mx-auto mb-8">
-        <div className="flex items-center justify-between">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+    <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+      <div className="sticky top-0 z-10 bg-black/30 backdrop-blur-md border-b border-white/10 p-4">
+        <div className="flex items-center">
+          <button
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-white/10 transition-colors mr-3"
           >
-            <h1 className="text-3xl font-bold mb-2">
-              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                Notifications
-              </span>
-            </h1>
-            <p className="text-gray-400">Stay updated with your latest activities and interactions</p>
-          </motion.div>
-
-          <motion.button
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            onClick={markAllAsRead}
-            className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all text-sm text-gray-300 border border-white/10"
-          >
-            Mark all as read
-          </motion.button>
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+          <h1 className="text-xl font-bold text-white">Notifications</h1>
         </div>
       </div>
 
-      {/* Enhanced Filters */}
-      <div className="max-w-4xl mx-auto mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-800">
-            {/* ...existing filter buttons... */}
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <select 
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
-              onChange={(e) => console.log(e.target.value)}
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="unread">Unread First</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <div className="max-w-4xl mx-auto p-6">
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-cyan-400 mb-6">
+          Notifications
+        </h1>
 
-      {/* Enhanced Notifications List */}
-      <div className="max-w-4xl mx-auto">
-        <AnimatePresence>
-          {loading ? (
-            // ...existing loading state...
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {notifications.map((notification) => (
-                <motion.div
-                  key={notification.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className={`group relative overflow-hidden rounded-xl backdrop-blur-lg transition-all ${
-                    notification.read ? 'bg-white/5' : 'bg-white/10'
-                  } hover:bg-white/20`}
-                >
-                  {/* Priority Indicator */}
-                  {notification.priority && (
-                    <div className={`absolute top-0 left-0 w-1 h-full ${
-                      notification.priority === 'high' ? 'bg-red-500' :
-                      notification.priority === 'medium' ? 'bg-yellow-500' :
-                      'bg-blue-500'
-                    }`} />
-                  )}
-
-                  {/* Glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  
-                  <div className="relative p-4">
-                    <div className="flex items-start space-x-4">
-                      <div className={`p-2 rounded-full ${
-                        notification.type === 'CONTACT_REQUEST' 
-                          ? 'bg-cyan-500/20' 
-                          : 'bg-purple-500/20'
-                      }`}>
-                        {getNotificationIcon(notification.type)}
-                      </div>
-
-                      <div className="flex-1">
-                        <p className="text-white">{notification.content}</p>
-                        <p className="text-sm text-gray-400 mt-1">
-                          {new Date(notification.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {notification.actionUrl && (
-                          <button className="p-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-400">
-                            View
-                          </button>
-                        )}
-                        <button className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400">
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Category tag */}
-                    {notification.category && (
-                      <div className="mt-2 inline-block px-2 py-0.5 rounded-full text-xs bg-white/5 text-gray-400">
-                        {notification.category}
-                      </div>
-                    )}
+        <div className="space-y-4">
+          {notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <motion.div
+                key={notification.id}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className={`p-4 rounded-xl border ${
+                  notification.read 
+                    ? 'bg-black/20 border-white/5' 
+                    : 'bg-purple-500/10 border-purple-500/20'
+                }`}
+                onClick={() => !notification.read && markNotificationAsRead(notification.id)}
+              >
+                <div className="flex items-start space-x-4">
+                  <div className={`p-2 rounded-full ${
+                    notification.type === 'CONTACT_REQUEST' 
+                      ? 'bg-cyan-500/20' 
+                      : 'bg-purple-500/20'
+                  }`}>
+                    {getNotificationIcon(notification.type)}
                   </div>
-                </motion.div>
-              ))}
+
+                  <div className="flex-1">
+                    <p className="text-white">{notification.content}</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {!notification.read && (
+                    <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                  )}
+                </div>
+                {renderNotificationActions(notification)}
+              </motion.div>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-4">
+                <Bell size={24} className="text-gray-400" />
+              </div>
+              <p className="text-gray-400">No notifications yet</p>
             </div>
           )}
-        </AnimatePresence>
-
-        {/* Empty state */}
-        {!loading && notifications.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-12"
-          >
-            <Bell size={40} className="mx-auto mb-4 text-gray-500" />
-            <h3 className="text-lg font-medium text-gray-300 mb-2">No notifications</h3>
-            <p className="text-gray-500">You're all caught up!</p>
-          </motion.div>
-        )}
+        </div>
       </div>
     </div>
   );
