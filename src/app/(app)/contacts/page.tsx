@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, ArrowLeft, UserPlus, Users } from 'lucide-react';
+import { Search, ArrowLeft, UserPlus, Users, Check, X } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 
@@ -29,11 +29,13 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
+  const [contactRequests, setContactRequests] = useState([]);
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchContacts = async () => {
@@ -52,8 +54,19 @@ export default function ContactsPage() {
       }
     };
 
+    const fetchContactRequests = async () => {
+      try {
+        const response = await fetch('/api/contacts/requests');
+        const data = await response.json();
+        setContactRequests(data.requests || []);
+      } catch (error) {
+        console.error('Error fetching contact requests:', error);
+      }
+    };
+
     if (session?.user) {
       fetchContacts();
+      fetchContactRequests();
       // Poll for online status every 30 seconds
       const interval = setInterval(fetchContacts, 30000);
       return () => clearInterval(interval);
@@ -115,6 +128,48 @@ export default function ContactsPage() {
       setError(error instanceof Error ? error.message : 'Failed to send request');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/contacts/requests/${requestId}/accept`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to accept contact request');
+      }
+
+      setContactRequests((prev) =>
+        prev.filter((request) => request.id !== requestId)
+      );
+    } catch (error) {
+      console.error('Error accepting contact request:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/contacts/requests/${requestId}/reject`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject contact request');
+      }
+
+      setContactRequests((prev) =>
+        prev.filter((request) => request.id !== requestId)
+      );
+    } catch (error) {
+      console.error('Error rejecting contact request:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -236,6 +291,44 @@ export default function ContactsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Contact requests section */}
+      <div className="px-3 sm:px-4 py-3 bg-black/10 border-t border-white/10">
+        <h2 className="text-lg font-semibold text-white mb-3">Contact Requests</h2>
+        {contactRequests.length > 0 ? (
+          <div className="space-y-2">
+            {contactRequests.map((request) => (
+              <div
+                key={request.id}
+                className="flex items-center justify-between p-4 bg-gray-800 rounded-lg"
+              >
+                <div>
+                  <p className="text-white font-medium">{request.senderName}</p>
+                  <p className="text-gray-400 text-sm">{request.senderEmail}</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleAcceptRequest(request.id)}
+                    disabled={loading}
+                    className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition-colors"
+                  >
+                    <Check size={20} className="text-white" />
+                  </button>
+                  <button
+                    onClick={() => handleRejectRequest(request.id)}
+                    disabled={loading}
+                    className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <X size={20} className="text-white" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-400 text-sm text-center py-2">No new contact requests</p>
+        )}
       </div>
     </div>
   );
