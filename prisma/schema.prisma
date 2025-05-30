@@ -13,7 +13,7 @@ model User {
   email                 String            @unique
   password              String
   phone                 String?
-  profileImage          String?
+  profileImage          String? // Changed from profileImage to profileImage
   bio                   String?
   status                String            @default("offline") // "online", "offline", "away", "busy"
   lastSeen              DateTime?
