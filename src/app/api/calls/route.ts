@@ -8,45 +8,63 @@ export async function POST(request: Request) {
     const session = await getServerSession();
     
     if (!session?.user?.email) {
-      console.log('No authenticated session found');
+      console.log('No session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { type, receiverId, chatId } = body;
+    const { chatId, type } = await request.json();
 
-    // Find current user
-    const caller = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!caller) {
-      return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
+    // Validate required fields
+    if (!chatId || !type) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Create call record with transaction
+    // Get chat participants to find the receiver
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: {
+        participants: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+
+    if (!chat) {
+      return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
+    }
+
+    // Find caller and receiver from chat participants
+    const caller = chat.participants.find(p => p.user.email === session.user.email);
+    const receiver = chat.participants.find(p => p.user.email !== session.user.email);
+
+    if (!caller || !receiver) {
+      return NextResponse.json({ error: 'Invalid chat participants' }, { status: 400 });
+    }
+
+    // Create call using transaction
     const call = await prisma.$transaction(async (tx) => {
-      // Create call
+      // Create the call
       const newCall = await tx.call.create({
         data: {
           type,
           status: 'initiated',
-          callerId: caller.id,
-          receiverId,
-          chatId,
+          callerId: caller.userId,
+          receiverId: receiver.userId,
+          chatId: chat.id,
           startTime: new Date(),
         }
       });
 
-      // Create notification with correct fields
+      // Create notification for receiver
       await tx.notification.create({
         data: {
           type: 'CALL',
           content: `Incoming ${type} call`,
-          userId: receiverId,
-          senderId: caller.id,
-          chatId,
-          read: false
+          userId: receiver.userId,
+          senderId: caller.userId,
+          chatId: chat.id,
         }
       });
 
