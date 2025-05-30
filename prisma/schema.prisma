@@ -101,6 +101,7 @@ model Notification {
   type      String
   content   String
   userId    String
+  chatId    String?   // Add this field
   senderId  String? // Changed from fromUserId to senderId to match the model
   groupId   String?
   read      Boolean  @default(false)
