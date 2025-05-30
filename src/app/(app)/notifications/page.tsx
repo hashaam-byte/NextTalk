@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, UserPlus, MessageSquare, Users, ArrowLeft, Check, X } from 'lucide-react';
 
 interface Notification {
@@ -95,30 +95,8 @@ export default function NotificationsPage() {
     }
   };
 
-  const renderNotificationActions = (notification: Notification) => {
-    if (notification.type === 'CONTACT_REQUEST') {
-      return (
-        <div className="flex space-x-2">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => handleAction(notification.id, true)}
-            className="p-2 bg-green-500 rounded-full text-white"
-          >
-            <Check size={16} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => handleAction(notification.id, false)}
-            className="p-2 bg-red-500 rounded-full text-white"
-          >
-            <X size={16} />
-          </motion.button>
-        </div>
-      );
-    }
-    return null;
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString();
   };
 
   if (loading) {
@@ -138,69 +116,101 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
-      <div className="sticky top-0 z-10 bg-black/30 backdrop-blur-md border-b border-white/10 p-4">
-        <div className="flex items-center">
-          <button
-            onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-white/10 transition-colors mr-3"
-          >
-            <ArrowLeft size={20} className="text-white" />
-          </button>
-          <h1 className="text-xl font-bold text-white">Notifications</h1>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+      {/* Background Elements */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
+        <div className="absolute bottom-1/3 -right-20 w-80 h-80 bg-cyan-400/20 rounded-full filter blur-3xl"></div>
+        <div className="absolute top-2/3 left-1/3 w-96 h-96 bg-indigo-600/20 rounded-full filter blur-3xl"></div>
+        
+        {/* Animated grid background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6">
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-indigo-400 to-cyan-400 mb-6">
-          Notifications
-        </h1>
+      <div className="relative z-10 max-w-4xl mx-auto p-6">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between mb-8"
+        >
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text">
+            Notifications
+          </h1>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {/* handle clear all */}}
+            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm"
+          >
+            Clear All
+          </motion.button>
+        </motion.div>
 
         <div className="space-y-4">
-          {notifications.length > 0 ? (
-            notifications.map((notification) => (
+          <AnimatePresence mode="popLayout">
+            {notifications.map((notification, index) => (
               <motion.div
                 key={notification.id}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className={`p-4 rounded-xl border ${
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2, delay: index * 0.05 }}
+                className={`group relative overflow-hidden rounded-xl backdrop-blur-lg border transition-all ${
                   notification.read 
                     ? 'bg-black/20 border-white/5' 
                     : 'bg-purple-500/10 border-purple-500/20'
                 }`}
-                onClick={() => !notification.read && markNotificationAsRead(notification.id)}
               >
-                <div className="flex items-start space-x-4">
-                  <div className={`p-2 rounded-full ${
-                    notification.type === 'CONTACT_REQUEST' 
-                      ? 'bg-cyan-500/20' 
-                      : 'bg-purple-500/20'
-                  }`}>
-                    {getNotificationIcon(notification.type)}
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="text-white">{notification.content}</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-
-                  {!notification.read && (
-                    <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                  )}
+                {/* Highlight effect */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 blur-xl"></div>
                 </div>
-                {renderNotificationActions(notification)}
+
+                {/* Content */}
+                <div className="relative p-4 flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/30 to-cyan-500/30 p-[2px]">
+                      <div className="w-full h-full rounded-full bg-black/50 flex items-center justify-center">
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium mb-1">{notification.content}</p>
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <span>{formatTimestamp(notification.createdAt)}</span>
+                      {!notification.read && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
+                          New
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleAction(notification.id, true)}
+                      className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    >
+                      <Check size={16} className="text-gray-400" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => handleAction(notification.id, false)}
+                      className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    >
+                      <X size={16} className="text-gray-400" />
+                    </motion.button>
+                  </div>
+                </div>
               </motion.div>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center mb-4">
-                <Bell size={24} className="text-gray-400" />
-              </div>
-              <p className="text-gray-400">No notifications yet</p>
-            </div>
-          )}
+            ))}
+          </AnimatePresence>
         </div>
       </div>
     </div>

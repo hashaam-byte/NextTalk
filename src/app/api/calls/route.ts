@@ -1,37 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authConfig';
 import { prisma } from '@/lib/prisma';
 import { StreamVideoClient } from '@stream-io/video-client';
 
-// Initialize Stream Video client with server configuration
+// Initialize Stream Video client
 const streamVideo = new StreamVideoClient({
   apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
-  secret: process.env.STREAM_VIDEO_SECRET!,
-  userId: 'server', // Server-side user ID
+  token: process.env.STREAM_VIDEO_SECRET!,
+  userId: 'server',
 });
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    // Get session with auth options
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      console.error('Unauthorized: No session or email');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { type, receiverId, chatId } = await request.json();
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      console.error('User not found:', session.user.email);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const { type, receiverId, chatId } = body;
+
+    if (!type || !receiverId || !chatId) {
+      return NextResponse.json(
+        { error: 'Missing required fields' }, 
+        { status: 400 }
+      );
+    }
 
     // Create call record
     const call = await prisma.call.create({
       data: {
         type,
         status: 'initiated',
-        callerId: session.user.id,
+        callerId: user.id,
         receiverId,
         chatId,
+        startTime: new Date(),
       }
     });
 
-    // Generate Stream call token for the user
-    const token = streamVideo.createToken(session.user.id);
+    // Generate Stream call token
+    const token = streamVideo.createToken(user.id);
 
     // Create notification
     await prisma.notification.create({
@@ -39,27 +62,27 @@ export async function POST(request: NextRequest) {
         userId: receiverId,
         type: 'CALL',
         content: `Incoming ${type} call`,
-        senderId: session.user.id,
-        chatId,
+        senderId: user.id,
       }
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
+      success: true,
       callId: call.id,
       token,
       apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY
     });
 
   } catch (error) {
-    console.error('Call error:', error);
+    console.error('Call initiation error:', error);
     return NextResponse.json(
-      { error: 'Failed to initiate call' }, 
+      { error: 'Failed to initiate call' },
       { status: 500 }
     );
   }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -69,8 +92,8 @@ export async function GET(req: Request) {
     const calls = await prisma.call.findMany({
       where: {
         OR: [
-          { caller: { email: session.user.email } },
-          { receiver: { email: session.user.email } }
+          { callerId: session.user.id },
+          { receiverId: session.user.id }
         ]
       },
       include: {
@@ -78,6 +101,7 @@ export async function GET(req: Request) {
           select: {
             id: true,
             name: true,
+            email: true,
             profileImage: true
           }
         },
@@ -85,18 +109,22 @@ export async function GET(req: Request) {
           select: {
             id: true,
             name: true,
+            email: true,
             profileImage: true
           }
         }
       },
       orderBy: {
-        startedAt: 'desc'
+        startTime: 'desc'
       }
     });
 
     return NextResponse.json({ calls });
   } catch (error) {
-    console.error('[CALLS_GET]', error);
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    console.error('Error fetching calls:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch calls' },
+      { status: 500 }
+    );
   }
 }
