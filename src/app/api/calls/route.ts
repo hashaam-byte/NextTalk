@@ -1,84 +1,65 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { StreamVideoClient } from '@stream-io/video-client';
+import { StreamChat } from 'stream-chat';
+
+// Initialize Stream client
+const streamClient = StreamChat.getInstance(
+  process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
+  process.env.STREAM_VIDEO_SECRET!
+);
 
 export async function POST(request: Request) {
   try {
     const session = await getServerSession();
     
     if (!session?.user?.email) {
-      console.log('No session found');
+      console.log('No authenticated session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId, type } = await request.json();
+    const body = await request.json();
+    const { type, receiverId, chatId } = body;
 
-    // Validate required fields
-    if (!chatId || !type) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Get chat participants to find the receiver
-    const chat = await prisma.chat.findUnique({
-      where: { id: chatId },
-      include: {
-        participants: {
-          include: {
-            user: true
-          }
-        }
-      }
+    // Find current user
+    const caller = await prisma.user.findUnique({
+      where: { email: session.user.email }
     });
 
-    if (!chat) {
-      return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
+    if (!caller) {
+      return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
     }
 
-    // Find caller and receiver from chat participants
-    const caller = chat.participants.find(p => p.user.email === session.user.email);
-    const receiver = chat.participants.find(p => p.user.email !== session.user.email);
-
-    if (!caller || !receiver) {
-      return NextResponse.json({ error: 'Invalid chat participants' }, { status: 400 });
-    }
-
-    // Create call using transaction
+    // Create call record with transaction
     const call = await prisma.$transaction(async (tx) => {
-      // Create the call
+      // Create call
       const newCall = await tx.call.create({
         data: {
           type,
           status: 'initiated',
-          callerId: caller.userId,
-          receiverId: receiver.userId,
-          chatId: chat.id,
+          callerId: caller.id,
+          receiverId,
+          chatId,
           startTime: new Date(),
         }
       });
 
-      // Create notification for receiver
+      // Create notification
       await tx.notification.create({
         data: {
           type: 'CALL',
           content: `Incoming ${type} call`,
-          userId: receiver.userId,
-          senderId: caller.userId,
-          chatId: chat.id,
+          userId: receiverId,
+          senderId: caller.id,
+          chatId: chatId
         }
       });
 
       return newCall;
     });
 
-    // Initialize Stream call
-    const streamClient = new StreamVideoClient({
-      apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
-      token: process.env.STREAM_VIDEO_SECRET!,
-      userId: caller.userId,
-    });
-
-    const token = streamClient.createToken(caller.userId);
+    // Generate token using Stream client
+    const token = streamClient.createToken(caller.id);
 
     return NextResponse.json({
       success: true,
