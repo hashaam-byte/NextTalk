@@ -130,33 +130,26 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleImageUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file); // Make sure to use 'file' as the field name
 
     try {
-      setIsUploading(true);
-      const formData = new FormData();
-      formData.append('image', file);
-
       const response = await fetch('/api/user/profile-image', {
         method: 'POST',
         body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setUserData(prev => ({
-          ...prev,
-          profileImage: data.imageUrl
-        }));
-      } else {
-        throw new Error('Failed to upload image');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload image');
       }
+
+      const data = await response.json();
+      return data.imageUrl;
     } catch (error) {
-      console.error('Error uploading image:', error);
-    } finally {
-      setIsUploading(false);
+      console.error('Upload error:', error);
+      throw error;
     }
   };
   

@@ -30,19 +30,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get form data
+    // Get form data and check both 'file' and 'image' fields
     const formData = await request.formData();
-    const file = formData.get('file');
+    const file = formData.get('file') || formData.get('image');
 
-    if (!file) {
-      console.log('No file provided');
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    if (!file || !(file instanceof Blob)) {
+      console.log('No valid file provided in form data:', 
+        'Fields available:', Array.from(formData.keys()));
+      return NextResponse.json({ 
+        error: 'No valid file provided',
+        availableFields: Array.from(formData.keys())
+      }, { status: 400 });
+    }
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      return NextResponse.json({ 
+        error: 'Invalid file type. Only JPEG, PNG, WebP and GIF are allowed.' 
+      }, { status: 400 });
     }
 
     // Convert file to base64
-    const bytes = await (file as Blob).arrayBuffer();
+    const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const fileBase64 = `data:${(file as File).type};base64,${buffer.toString('base64')}`;
+    const fileBase64 = `data:${file.type};base64,${buffer.toString('base64')}`;
 
     // Upload to Cloudinary with error handling
     try {
@@ -73,7 +85,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Profile image upload error:', error);
     return NextResponse.json({ 
-      error: 'Internal server error' 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }
