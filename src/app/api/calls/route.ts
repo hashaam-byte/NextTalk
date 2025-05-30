@@ -1,92 +1,97 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authConfig';
 import { prisma } from '@/lib/prisma';
 import { StreamVideoClient } from '@stream-io/video-client';
 
 export async function POST(request: Request) {
   try {
-    // Get session with authOptions
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     if (!session?.user?.email) {
-      console.log('Session:', session);
+      console.log('No session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true }
-    });
-
-    if (!user) {
-      console.log('User not found for email:', session.user.email);
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const body = await request.json();
-    const { type, receiverId, chatId } = body;
+    const { chatId, type } = await request.json();
 
     // Validate required fields
-    if (!type || !receiverId || !chatId) {
-      console.log('Missing fields:', { type, receiverId, chatId });
+    if (!chatId || !type) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Get chat participants to find the receiver
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: {
+        participants: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+
+    if (!chat) {
+      return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
+    }
+
+    // Find caller and receiver from chat participants
+    const caller = chat.participants.find(p => p.user.email === session.user.email);
+    const receiver = chat.participants.find(p => p.user.email !== session.user.email);
+
+    if (!caller || !receiver) {
+      return NextResponse.json({ error: 'Invalid chat participants' }, { status: 400 });
     }
 
     // Create call using transaction
     const call = await prisma.$transaction(async (tx) => {
-      // Create call record
+      // Create the call
       const newCall = await tx.call.create({
         data: {
           type,
           status: 'initiated',
-          callerId: user.id,
-          receiverId,
-          chatId,
+          callerId: caller.userId,
+          receiverId: receiver.userId,
+          chatId: chat.id,
           startTime: new Date(),
         }
       });
 
-      // Create notification
+      // Create notification for receiver
       await tx.notification.create({
         data: {
           type: 'CALL',
           content: `Incoming ${type} call`,
-          userId: receiverId,
-          senderId: user.id,
-          chatId
+          userId: receiver.userId,
+          senderId: caller.userId,
+          chatId: chat.id,
         }
       });
 
       return newCall;
     });
 
-    // Initialize Stream Video client
+    // Initialize Stream call
     const streamClient = new StreamVideoClient({
       apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY!,
       token: process.env.STREAM_VIDEO_SECRET!,
-      userId: user.id,
+      userId: caller.userId,
     });
 
-    const streamToken = streamClient.createToken(user.id);
+    const token = streamClient.createToken(caller.userId);
 
     return NextResponse.json({
       success: true,
       callId: call.id,
-      streamToken,
+      token,
       apiKey: process.env.NEXT_PUBLIC_STREAM_VIDEO_KEY
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Call initiation error:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to initiate call', 
-        details: error.message,
-        code: error.code 
-      }, 
-      { status: error.code === 'P2025' ? 404 : 500 }
+      { error: 'Failed to initiate call', details: error.message },
+      { status: 500 }
     );
   }
 }
