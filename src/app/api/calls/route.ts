@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { StreamChat } from 'stream-chat';
+import { authOptions } from '@/lib/authConfig';
 
 // Initialize Stream client
 const streamClient = StreamChat.getInstance(
@@ -11,23 +12,21 @@ const streamClient = StreamChat.getInstance(
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      console.log('No authenticated session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
     const { type, receiverId, chatId } = body;
 
-    // Find current user
-    const caller = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    // Verify the receiver exists
+    const receiver = await prisma.user.findUnique({
+      where: { id: receiverId }
     });
 
-    if (!caller) {
-      return NextResponse.json({ error: 'Caller not found' }, { status: 404 });
+    if (!receiver) {
+      return NextResponse.json({ error: 'Receiver not found' }, { status: 404 });
     }
 
     // Create call record with transaction
@@ -37,7 +36,7 @@ export async function POST(request: Request) {
         data: {
           type,
           status: 'initiated',
-          callerId: caller.id,
+          callerId: session.user.id,
           receiverId,
           chatId,
           startTime: new Date(),
@@ -50,7 +49,7 @@ export async function POST(request: Request) {
           type: 'CALL',
           content: `Incoming ${type} call`,
           userId: receiverId,
-          senderId: caller.id,
+          senderId: session.user.id,
           chatId: chatId
         }
       });
@@ -59,7 +58,7 @@ export async function POST(request: Request) {
     });
 
     // Generate token using Stream client
-    const token = streamClient.createToken(caller.id);
+    const token = streamClient.createToken(session.user.id);
 
     return NextResponse.json({
       success: true,

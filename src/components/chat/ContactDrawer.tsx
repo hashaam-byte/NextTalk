@@ -10,6 +10,7 @@ interface ContactDrawerProps {
     bio?: string;
     status: string;
     lastSeen?: Date;
+    isBlocked?: boolean;
   };
   commonGroups: {
     id: string;
@@ -56,7 +57,7 @@ export default function ContactDrawer({
           <div className="flex items-end space-x-4">
             <div className="relative">
               <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white/20">
-                {contact.profileImage ? (
+                {!contact.isBlocked && contact.profileImage ? (
                   <Image
                     src={contact.profileImage}
                     alt={contact.name}
@@ -64,19 +65,28 @@ export default function ContactDrawer({
                     className="object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-3xl text-white">
-                    {contact.name[0]}
+                  <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center">
+                    <UserIcon className="w-12 h-12 text-gray-400" />
                   </div>
                 )}
               </div>
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-gray-900 ${
-                contact.status === 'online' ? 'bg-green-500' : 'bg-gray-500'
-              }`}></div>
+              
+              {!contact.isBlocked && (
+                <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-gray-900 ${
+                  contact.status === 'online' ? 'bg-green-500' : 'bg-gray-500'
+                }`}></div>
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-white mb-1">{contact.name}</h2>
               <p className="text-sm text-gray-300">
-                {contact.status === 'online' ? 'Online' : 'Last seen recently'}
+                {contact.isBlocked 
+                  ? 'Blocked Contact'
+                  : contact.status === 'online'
+                  ? 'Online'
+                  : contact.lastSeen
+                  ? `Last seen ${formatLastSeen(contact.lastSeen)}`
+                  : 'Offline'}
               </p>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { Phone, Video } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface CallConfirmDialogProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ interface CallConfirmDialogProps {
   onCancel: () => void;
 }
 
+const defaultRingtone = '/sounds/default-ringtone.mp3';
+
 export default function CallConfirmDialog({
   isOpen,
   type,
@@ -22,6 +25,19 @@ export default function CallConfirmDialog({
   onConfirm,
   onCancel
 }: CallConfirmDialogProps) {
+  useEffect(() => {
+    if (isOpen) {
+      const audio = new Audio(defaultRingtone);
+      audio.loop = true;
+      audio.play().catch(console.error);
+      
+      return () => {
+        audio.pause();
+        audio.currentTime = 0;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
