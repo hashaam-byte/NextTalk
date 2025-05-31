@@ -372,27 +372,72 @@ export default function ChatPage() {
   const handleMessageAction = async (action: string) => {
     if (!selectedMessage) return;
 
-    switch (action) {
-      case 'copy':
-        await navigator.clipboard.writeText(selectedMessage.content);
-        break;
-      case 'delete':
-        // Add delete API call
-        break;
-      case 'forward':
-        router.push(`/forward-message?messageId=${selectedMessage.id}`);
-        break;
-      case 'star':
-        // Add star API call
-        break;
-      case 'pin':
-        // Add pin API call
-        break;
-      case 'report':
-        // Add report API call
-        break;
+    try {
+      switch (action) {
+        case 'copy':
+          await navigator.clipboard.writeText(selectedMessage.content);
+          break;
+
+        case 'delete':
+          const deleteRes = await fetch(`/api/chat/${chatId}/messages/${selectedMessage.id}`, {
+            method: 'DELETE'
+          });
+          if (deleteRes.ok) {
+            setMessages(prev => prev.filter(msg => msg.id !== selectedMessage.id));
+          }
+          break;
+
+        case 'forward':
+          // Store message in localStorage for forwarding
+          localStorage.setItem('forwardMessage', JSON.stringify(selectedMessage));
+          router.push('/forward');
+          break;
+
+        case 'star':
+          const starRes = await fetch(`/api/chat/${chatId}/messages/${selectedMessage.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: selectedMessage.isStarred ? 'unstar' : 'star' })
+          });
+          if (starRes.ok) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === selectedMessage.id 
+                ? { ...msg, isStarred: !msg.isStarred }
+                : msg
+            ));
+          }
+          break;
+
+        case 'pin':
+          const pinRes = await fetch(`/api/chat/${chatId}/messages/${selectedMessage.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: selectedMessage.isPinned ? 'unpin' : 'pin' })
+          });
+          if (pinRes.ok) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === selectedMessage.id 
+                ? { ...msg, isPinned: !msg.isPinned }
+                : msg
+            ));
+          }
+          break;
+
+        case 'report':
+          const reportRes = await fetch(`/api/messages/${selectedMessage.id}/report`, {
+            method: 'POST'
+          });
+          if (reportRes.ok) {
+            // Show success notification
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`Error handling ${action} action:`, error);
+    } finally {
+      setShowMessageActions(false);
+      setSelectedMessage(null);
     }
-    setShowMessageActions(false);
   };
 
   const handleMessageContextMenu = (e: React.MouseEvent, message: Message) => {
@@ -923,7 +968,16 @@ export default function ChatPage() {
       <AnimatePresence>
         {showContactInfo && chatInfo && (
           <ContactDrawer
-            contact={chatInfo}
+            chatId={chatId as string}
+            contact={{
+              ...chatInfo,
+              id: chatId as string,
+              profileImage: chatInfo.avatar,
+              status: chatInfo.status || 'offline',
+              lastSeen: chatInfo.lastSeen,
+              deviceType: chatInfo.deviceType,
+              isTyping: chatInfo.isTyping
+            }}
             commonGroups={[]} // Fetch from API
             onClose={() => setShowContactInfo(false)}
             onMute={handleMuteContact}
