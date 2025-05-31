@@ -668,25 +668,24 @@ export default function ChatPage() {
   };
 
   const handleWallpaperChange = async (color: string) => {
-    // Immediately update local state
     setWallpaperColor(color);
     setCustomWallpaper(null);
     setShowWallpaperPicker(false);
 
-    // Then update server
     try {
-      await handleSetWallpaper(color);
+      await fetch(`/api/chat/${chatId}/wallpaper`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallpaper: color })
+      });
     } catch (error) {
       console.error('Error setting wallpaper:', error);
-      // Optionally revert if server update fails
-      // setWallpaperColor(previousColor);
     }
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
-      // Create temporary local URL for immediate preview
       const localUrl = URL.createObjectURL(file);
       setCustomWallpaper(localUrl);
       setShowWallpaperPicker(false);
@@ -701,21 +700,23 @@ export default function ChatPage() {
         });
 
         const { url } = await response.json();
-        
-        // Update with actual cloud URL
         setCustomWallpaper(url);
-        await handleSetWallpaper(url);
         
-        // Clean up local URL
+        // Persist the wallpaper URL
+        await fetch(`/api/chat/${chatId}/wallpaper`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallpaper: url })
+        });
+
         URL.revokeObjectURL(localUrl);
       } catch (error) {
         console.error('Error uploading wallpaper:', error);
-        // Revert on error
         setCustomWallpaper(null);
         URL.revokeObjectURL(localUrl);
       }
     }
-  }, []);
+  }, [chatId]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
