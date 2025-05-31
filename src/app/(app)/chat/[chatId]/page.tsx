@@ -372,7 +372,7 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages(prev => prev.filter msg => msg.id !== newMessage.id));
+      setMessages(prev => prev.filter((msg) => msg.id !== newMessage.id));
     }
   };
 
@@ -461,7 +461,7 @@ export default function ChatPage() {
             body: JSON.stringify({ action: selectedMessage.isPinned ? 'unpin' : 'pin' })
           });
           if (pinRes.ok) {
-            setMessages(prev => prev.map msg => 
+            setMessages(prev => prev.map((msg) => 
               msg.id === selectedMessage.id 
                 ? { ...msg, isPinned: !msg.isPinned }
                 : msg
@@ -747,73 +747,6 @@ export default function ChatPage() {
       fetchWallpaper();
     }
   }, [chatId]);
-
-  // Update handleWallpaperChange to persist changes
-  const handleWallpaperChange = async (color: string) => {
-    // Update local state
-    setWallpaperColor(color);
-    setCustomWallpaper(null);
-    setShowWallpaperPicker(false);
-
-    try {
-      // Persist to database
-      await fetch(`/api/chat/${chatId}/wallpaper`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallpaper: color })
-      });
-    } catch (error) {
-      console.error('Error saving wallpaper:', error);
-    }
-  };
-
-  // Update onDrop to handle custom wallpaper upload
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      const localUrl = URL.createObjectURL(file);
-      setCustomWallpaper(localUrl);
-      setShowWallpaperPicker(false);
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const response = await fetch('/api/chat/wallpaper/upload', {
-          method: 'POST',
-          body: formData
-        });
-
-        const { url } = await response.json();
-        
-        // Update local state
-        setCustomWallpaper(url);
-        setWallpaperColor('default');
-        
-        // Persist to database
-        await fetch(`/api/chat/${chatId}/wallpaper`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ wallpaper: url })
-        });
-
-        URL.revokeObjectURL(localUrl);
-      } catch (error) {
-        console.error('Error uploading wallpaper:', error);
-        setCustomWallpaper(null);
-        URL.revokeObjectURL(localUrl);
-      }
-    }
-  }, [chatId]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
-    },
-    maxSize: 5 * 1024 * 1024, // 5MB
-    multiple: false
-  });
 
   // Update the background style based on wallpaper
   const getBackgroundStyle = () => {
