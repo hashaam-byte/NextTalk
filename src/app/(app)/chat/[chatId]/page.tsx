@@ -668,18 +668,20 @@ export default function ChatPage() {
   };
 
   const handleWallpaperChange = async (color: string) => {
+    // Update local state
     setWallpaperColor(color);
     setCustomWallpaper(null);
     setShowWallpaperPicker(false);
 
     try {
+      // Persist to database
       await fetch(`/api/chat/${chatId}/wallpaper`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wallpaper: color })
       });
     } catch (error) {
-      console.error('Error setting wallpaper:', error);
+      console.error('Error saving wallpaper:', error);
     }
   };
 
@@ -700,9 +702,95 @@ export default function ChatPage() {
         });
 
         const { url } = await response.json();
-        setCustomWallpaper(url);
         
-        // Persist the wallpaper URL
+        // Update local state
+        setCustomWallpaper(url);
+        setWallpaperColor('default');
+        
+        // Persist to database
+        await fetch(`/api/chat/${chatId}/wallpaper`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallpaper: url })
+        });
+
+        URL.revokeObjectURL(localUrl);
+      } catch (error) {
+        console.error('Error uploading wallpaper:', error);
+        setCustomWallpaper(null);
+        URL.revokeObjectURL(localUrl);
+      }
+    }
+  }, [chatId]);
+
+  // Add effect to fetch saved wallpaper
+  useEffect(() => {
+    const fetchWallpaper = async () => {
+      try {
+        const response = await fetch(`/api/chat/${chatId}/wallpaper`);
+        const data = await response.json();
+        if (data.wallpaper) {
+          if (data.wallpaper.startsWith('http')) {
+            setCustomWallpaper(data.wallpaper);
+            setWallpaperColor('default');
+          } else {
+            setWallpaperColor(data.wallpaper);
+            setCustomWallpaper(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching wallpaper:', error);
+      }
+    };
+
+    if (chatId) {
+      fetchWallpaper();
+    }
+  }, [chatId]);
+
+  // Update handleWallpaperChange to persist changes
+  const handleWallpaperChange = async (color: string) => {
+    // Update local state
+    setWallpaperColor(color);
+    setCustomWallpaper(null);
+    setShowWallpaperPicker(false);
+
+    try {
+      // Persist to database
+      await fetch(`/api/chat/${chatId}/wallpaper`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallpaper: color })
+      });
+    } catch (error) {
+      console.error('Error saving wallpaper:', error);
+    }
+  };
+
+  // Update onDrop to handle custom wallpaper upload
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      const localUrl = URL.createObjectURL(file);
+      setCustomWallpaper(localUrl);
+      setShowWallpaperPicker(false);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/chat/wallpaper/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const { url } = await response.json();
+        
+        // Update local state
+        setCustomWallpaper(url);
+        setWallpaperColor('default');
+        
+        // Persist to database
         await fetch(`/api/chat/${chatId}/wallpaper`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

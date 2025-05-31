@@ -13,15 +13,13 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Find participant's wallpaper setting
     const participant = await prisma.participant.findFirst({
       where: {
         chatId: params.chatId,
         user: {
           email: session.user.email
         }
-      },
-      select: {
-        wallpaper: true
       }
     });
 
@@ -44,7 +42,8 @@ export async function PUT(
 
     const { wallpaper } = await req.json();
 
-    const updatedParticipant = await prisma.participant.updateMany({
+    // Update participant's wallpaper setting
+    await prisma.participant.updateMany({
       where: {
         chatId: params.chatId,
         user: {
