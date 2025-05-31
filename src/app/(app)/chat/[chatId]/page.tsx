@@ -372,7 +372,7 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages(prev => prev.filter(msg => msg.id !== newMessage.id));
+      setMessages(prev => prev.filter msg => msg.id !== newMessage.id));
     }
   };
 
@@ -461,7 +461,7 @@ export default function ChatPage() {
             body: JSON.stringify({ action: selectedMessage.isPinned ? 'unpin' : 'pin' })
           });
           if (pinRes.ok) {
-            setMessages(prev => prev.map(msg => 
+            setMessages(prev => prev.map msg => 
               msg.id === selectedMessage.id 
                 ? { ...msg, isPinned: !msg.isPinned }
                 : msg
