@@ -3,29 +3,32 @@ import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/authConfig";
 
-export async function POST(
+export async function PUT(
   req: Request,
   { params }: { params: { chatId: string } }
 ) {
+  const { chatId } = params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Delete all messages for this user in the chat
-    await prisma.message.deleteMany({
+    const { wallpaper } = await req.json();
+
+    await prisma.participant.updateMany({
       where: {
-        chatId: params.chatId,
-        sender: {
-          email: session.user.email
-        }
+        chatId: chatId,
+        user: { email: session.user.email }
+      },
+      data: {
+        wallpaper
       }
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[CLEAR_CHAT]", error);
+    console.error("[UPDATE_WALLPAPER]", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

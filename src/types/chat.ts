@@ -20,3 +20,9 @@ export interface User {
   email: string;
   avatar?: string;
 }
+
+export interface SelectedMedia {
+  type: 'image' | 'video' | 'document';
+  url: string;
+  name: string;
+}

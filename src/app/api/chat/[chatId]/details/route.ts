@@ -5,14 +5,11 @@ import { authOptions } from "@/lib/authConfig";
 
 const ONLINE_THRESHOLD = 3 * 60 * 1000; // 3 minutes
 
-// Add this type definition
-type RouteParams = { params: { chatId: string } };
-
 export async function GET(
   request: NextRequest,
-  // @ts-ignore - Suppress the type error for the route params
-  { params }: RouteParams
+  { params }: { params: { chatId: string } }
 ) {
+  const { chatId } = params;
   try {
     const session = await getServerSession(authOptions);
 
@@ -28,7 +25,7 @@ export async function GET(
 
     const chat = await prisma.chat.findFirst({
       where: {
-        id: params.chatId,
+        id: chatId,
         participants: {
           some: {
             user: {

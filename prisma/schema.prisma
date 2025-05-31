@@ -92,6 +92,7 @@ model Participant {
   joinedAt DateTime @default(now())
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   chat     Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  wallpaper String? // Add this field
 
   @@unique([userId, chatId])
 }

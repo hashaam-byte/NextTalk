@@ -3,7 +3,11 @@ import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/authConfig";
 
-export async function GET(req: Request, { params }: { params: { chatId: string } }) {
+export async function GET(
+  req: Request,
+  { params }: { params: { chatId: string } }
+) {
+  const { chatId } = params;
   try {
     const session = await getServerSession(authOptions);
 
@@ -14,7 +18,7 @@ export async function GET(req: Request, { params }: { params: { chatId: string }
     // Verify user is participant in this chat
     const participant = await prisma.participant.findFirst({
       where: {
-        chatId: params.chatId,
+        chatId: chatId,
         user: {
           email: session.user.email
         }
