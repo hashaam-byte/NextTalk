@@ -114,11 +114,36 @@ export default function ChatPage() {
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
 
   const WALLPAPER_COLORS = [
-    { name: 'Default', value: 'default' },
-    { name: 'Purple', value: 'from-purple-900 via-gray-900 to-gray-900' },
-    { name: 'Blue', value: 'from-blue-900 via-gray-900 to-gray-900' },
-    { name: 'Green', value: 'from-green-900 via-gray-900 to-gray-900' },
-    { name: 'Red', value: 'from-red-900 via-gray-900 to-gray-900' }
+    { 
+      name: 'Default', 
+      value: 'from-gray-900 via-gray-800 to-gray-900',
+      pattern: 'bg-gradient-to-r'
+    },
+    { 
+      name: 'Aurora', 
+      value: 'from-purple-600/30 via-blue-500/30 to-green-400/30',
+      pattern: 'bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-from),_var(--tw-gradient-via),_var(--tw-gradient-to))]'
+    },
+    { 
+      name: 'Sunset', 
+      value: 'from-orange-500/30 via-pink-500/30 to-purple-600/30',
+      pattern: 'bg-[conic-gradient(at_bottom_left,_var(--tw-gradient-from),_var(--tw-gradient-via),_var(--tw-gradient-to))]'
+    },
+    { 
+      name: 'Ocean', 
+      value: 'from-cyan-400/30 via-blue-500/30 to-indigo-600/30',
+      pattern: 'bg-[linear-gradient(45deg,_var(--tw-gradient-from),_var(--tw-gradient-via),_var(--tw-gradient-to))]'
+    },
+    { 
+      name: 'Forest', 
+      value: 'from-green-400/30 via-emerald-500/30 to-teal-600/30',
+      pattern: 'bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-from),_var(--tw-gradient-via),_var(--tw-gradient-to))]'
+    },
+    { 
+      name: 'Dusk', 
+      value: 'from-rose-400/30 via-fuchsia-500/30 to-indigo-500/30',
+      pattern: 'bg-[conic-gradient(at_top_right,_var(--tw-gradient-from),_var(--tw-gradient-via),_var(--tw-gradient-to))]'
+    }
   ];
 
   const scrollToBottom = () => {
@@ -643,14 +668,29 @@ export default function ChatPage() {
   };
 
   const handleWallpaperChange = async (color: string) => {
+    // Immediately update local state
     setWallpaperColor(color);
-    await handleSetWallpaper(color);
+    setCustomWallpaper(null);
     setShowWallpaperPicker(false);
+
+    // Then update server
+    try {
+      await handleSetWallpaper(color);
+    } catch (error) {
+      console.error('Error setting wallpaper:', error);
+      // Optionally revert if server update fails
+      // setWallpaperColor(previousColor);
+    }
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
+      // Create temporary local URL for immediate preview
+      const localUrl = URL.createObjectURL(file);
+      setCustomWallpaper(localUrl);
+      setShowWallpaperPicker(false);
+
       const formData = new FormData();
       formData.append('file', file);
 
@@ -661,10 +701,18 @@ export default function ChatPage() {
         });
 
         const { url } = await response.json();
+        
+        // Update with actual cloud URL
         setCustomWallpaper(url);
         await handleSetWallpaper(url);
+        
+        // Clean up local URL
+        URL.revokeObjectURL(localUrl);
       } catch (error) {
         console.error('Error uploading wallpaper:', error);
+        // Revert on error
+        setCustomWallpaper(null);
+        URL.revokeObjectURL(localUrl);
       }
     }
   }, []);
@@ -672,9 +720,10 @@ export default function ChatPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.webp']
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
     },
-    maxSize: 5 * 1024 * 1024 // 5MB
+    maxSize: 5 * 1024 * 1024, // 5MB
+    multiple: false
   });
 
   // Update the background style based on wallpaper
@@ -688,11 +737,15 @@ export default function ChatPage() {
       };
     }
 
-    if (wallpaperColor === 'default') {
-      return { background: 'linear-gradient(to bottom right, rgb(17, 24, 39), rgb(17, 24, 39))' };
-    }
+    const selectedColor = WALLPAPER_COLORS.find(c => c.value === wallpaperColor);
+    if (!selectedColor) return {};
 
-    return { background: `linear-gradient(to bottom right, var(--${wallpaperColor}))` };
+    return {
+      background: `${selectedColor.pattern} ${selectedColor.value}`,
+      backgroundSize: '200% 200%',
+      animation: 'gradient 15s ease infinite',
+      transition: 'all 0.3s ease-in-out' // Add smooth transition
+    };
   };
 
   // Modify the wallpaper picker dialog:
@@ -704,6 +757,7 @@ export default function ChatPage() {
       className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-lg flex items-center justify-center"
     >
       <div className="bg-gray-900/95 rounded-xl border border-white/10 p-4 w-96">
+        {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-white font-medium">Choose Wallpaper</h3>
           <button
@@ -735,6 +789,7 @@ export default function ChatPage() {
           </div>
         </div>
 
+        {/* Preset Colors */}
         <div className="space-y-4">
           <p className="text-sm text-gray-400">Preset Colors</p>
           <div className="grid grid-cols-2 gap-3">
@@ -749,8 +804,10 @@ export default function ChatPage() {
                   wallpaperColor === color.value && !customWallpaper
                     ? 'border-purple-500 scale-95'
                     : 'border-transparent hover:border-white/20'
-                } ${color.value === 'default' ? 'bg-gray-900' : `bg-gradient-to-br ${color.value}`}`}
-              />
+                } ${color.pattern} ${color.value}`}
+              >
+                <span className="text-xs text-white/70 font-medium">{color.name}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -861,7 +918,7 @@ export default function ChatPage() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute right-0 mt-2 w-64 bg-gray-900/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/10"
+                        className="absolute right-0 mt-2 w-64 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 max-h-[calc(100vh-100px)] overflow-y-auto"
                       >
                         <div className="p-1 space-y-1">
                           <button
@@ -1513,3 +1570,12 @@ function getStatusIcon(status: string) {
       return null;
   }
 }
+
+// Add this CSS animation to your global styles or component
+const styles = `
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+`;
