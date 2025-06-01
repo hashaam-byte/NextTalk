@@ -5,6 +5,41 @@ import { fetchMovieData } from '@/lib/api/movies';
 import { fetchTechData } from '@/lib/api/technology';
 import { fetchMusicData } from '@/lib/api/music';
 import { fetchBookData } from '@/lib/api/books';
+import { fetchProgrammingData } from '@/lib/api/programming';
+
+const SUPPORTED_TOPICS = [
+  'anime',
+  'games',
+  'movies',
+  'technology',
+  'music',
+  'books',
+  'programming',
+  'gaming',
+];
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+async function fetchWithRetry(fetcher: Function, ...args: any[]) {
+  let lastError;
+
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      const data = await fetcher(...args);
+      return { success: true, data };
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+    }
+  }
+
+  return {
+    success: false,
+    error: lastError?.message || 'Failed to fetch data',
+    data: { items: [] },
+  };
+}
 
 export async function GET(
   req: Request,
@@ -12,49 +47,89 @@ export async function GET(
 ) {
   try {
     const { topic } = params;
+
+    if (!SUPPORTED_TOPICS.includes(topic)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Topic '${topic}' not supported. Available topics: ${SUPPORTED_TOPICS.join(
+            ', '
+          )}`,
+          data: { items: [] },
+        },
+        { status: 400 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const subtopic = searchParams.get('subtopic');
     const category = searchParams.get('category');
 
-    let data;
+    let result;
+
     switch (topic) {
-      case 'anime':
-        data = await fetchAnimeData(subtopic, category);
+      case 'programming':
+        result = await fetchWithRetry(fetchProgrammingData, subtopic, category);
         break;
 
-      case 'games':
-        data = await fetchGameData(subtopic, category);
+      case 'gaming':
+        // Redirect to games endpoint for backward compatibility
+        result = await fetchWithRetry(fetchGameData, subtopic, category);
+        break;
+
+      case 'anime':
+        result = await fetchWithRetry(fetchAnimeData, subtopic, category);
         break;
 
       case 'movies':
-        data = await fetchMovieData(subtopic, category);
+        result = await fetchWithRetry(fetchMovieData, subtopic, category);
         break;
 
       case 'technology':
-        data = await fetchTechData(subtopic, category);
+        result = await fetchWithRetry(fetchTechData, subtopic, category);
         break;
 
       case 'music':
-        data = await fetchMusicData(subtopic, category);
+        result = await fetchWithRetry(fetchMusicData, subtopic, category);
         break;
 
       case 'books':
-        data = await fetchBookData(subtopic, category);
+        result = await fetchWithRetry(fetchBookData, subtopic, category);
         break;
 
       default:
-        return NextResponse.json(
-          { error: 'Topic not supported' },
-          { status: 400 }
-        );
+        result = {
+          success: false,
+          error: 'Unsupported topic type',
+          data: { items: [] },
+        };
     }
 
-    return NextResponse.json({ success: true, data });
+    if (!result.success) {
+      console.error(`[TOPIC_INFO] Failed to fetch ${topic} data:`, result.error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error,
+          data: { items: [] },
+        },
+        { status: 200 } // Return 200 for graceful degradation
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: result.data,
+    });
   } catch (error) {
     console.error('[TOPIC_INFO]', error);
     return NextResponse.json(
-      { error: 'Failed to fetch topic information' },
-      { status: 500 }
+      {
+        success: false,
+        error: 'Internal server error',
+        data: { items: [] },
+      },
+      { status: 200 }
     );
   }
 }
