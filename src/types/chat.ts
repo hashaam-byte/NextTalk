@@ -24,5 +24,26 @@ export interface User {
 export interface SelectedMedia {
   type: 'image' | 'video' | 'document';
   url: string;
-  name: string;
+  title?: string;
+  timestamp: Date;
+  sender?: {
+    name: string;
+    avatar?: string;
+  };
+}
+
+export interface MediaItem {
+  id: string;
+  type: 'image' | 'video' | 'document';
+  url: string;
+  thumbnail?: string;
+  title?: string;
+  size?: number;
+  duration?: number;
+  timestamp: Date;
+  sender: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
 }
