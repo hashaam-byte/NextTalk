@@ -1,36 +1,103 @@
-export interface AnimeDetails {
+export interface BaseTopicDetails {
   id: string;
   title: string;
+  description: string;
+  image?: string;
+  rating?: number;
+  tags: string[];
+  followers: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnimeDetails extends BaseTopicDetails {
+  type: 'anime';
   episodes: number;
   status: string;
   airingDate: string;
-  synopsis: string;
   genre: string[];
-  rating: number;
-  image?: string;
   mangaChapters?: number;
   novelVolumes?: number;
+  studios: string[];
+  source: string;
+  duration: string;
+  season: string;
   relatedContent: {
     manga?: string;
+    novel?: string;
     adaptations?: string[];
   };
-  streamingPlatforms?: Array<{
-    name: string;
-    url: string;
-  }>;
-  studios?: string[];
-  duration?: string;
-  source?: string;
-  year?: number;
-  season?: string;
-  popularity?: number;
-  favorites?: number;
-  rank?: number;
 }
 
-export interface StatsCardProps {
-  label: string;
-  value: string | number;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
+export interface GameDetails extends BaseTopicDetails {
+  type: 'game';
+  platform: string[];
+  developer: string;
+  publisher: string;
+  releaseDate: string;
+  genre: string[];
+  averagePlaytime?: number;
+  metacriticScore?: number;
+  features: string[];
+  systemRequirements?: {
+    minimum: string;
+    recommended: string;
+  };
 }
+
+export interface MovieDetails extends BaseTopicDetails {
+  type: 'movie';
+  director: string;
+  cast: string[];
+  duration: number;
+  releaseDate: string;
+  genre: string[];
+  boxOffice?: string;
+  awards?: string[];
+  streamingPlatforms: string[];
+  relatedMovies?: string[];
+}
+
+export interface TechnologyDetails extends BaseTopicDetails {
+  type: 'technology';
+  category: string;
+  company?: string;
+  releaseDate: string;
+  features: string[];
+  techStack?: string[];
+  documentation?: string;
+  latestVersion?: string;
+  githubStats?: {
+    stars: number;
+    forks: number;
+    issues: number;
+  };
+}
+
+export interface MusicDetails extends BaseTopicDetails {
+  type: 'music';
+  artist: string;
+  album?: string;
+  genre: string[];
+  releaseDate: string;
+  duration: string;
+  label: string;
+  tracks?: number;
+  streamingPlatforms: string[];
+  awards?: string[];
+}
+
+export interface BookDetails extends BaseTopicDetails {
+  type: 'book';
+  author: string;
+  publisher: string;
+  genre: string[];
+  releaseDate: string;
+  pages: number;
+  isbn?: string;
+  series?: string;
+  awards?: string[];
+  formats: string[];
+}
+
+// Add more topic types as needed...

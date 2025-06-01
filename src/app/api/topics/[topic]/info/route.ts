@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { AnimeDetails } from '@/types/topics';
+import { fetchAnimeData } from '@/lib/api/anime';
+import { fetchGameData } from '@/lib/api/games';
+import { fetchMovieData } from '@/lib/api/movies';
+import { fetchTechData } from '@/lib/api/technology';
+import { fetchMusicData } from '@/lib/api/music';
+import { fetchBookData } from '@/lib/api/books';
 
 export async function GET(
   req: Request,
@@ -8,52 +13,45 @@ export async function GET(
   try {
     const { topic } = params;
     const { searchParams } = new URL(req.url);
-    const animeId = searchParams.get('id');
+    const subtopic = searchParams.get('subtopic');
+    const category = searchParams.get('category');
 
-    if (topic === 'anime') {
-      // Fetch from MyAnimeList API
-      const response = await fetch(
-        `https://api.jikan.moe/v4/${animeId ? `anime/${animeId}` : 'top/anime'}`
-      );
-      const data = await response.json();
+    let data;
+    switch (topic) {
+      case 'anime':
+        data = await fetchAnimeData(subtopic, category);
+        break;
 
-      // Format the anime data properly
-      const formattedData: AnimeDetails[] = data.data.map((anime: any) => ({
-        id: anime.mal_id.toString(),
-        title: anime.title,
-        episodes: anime.episodes || 0,
-        status: anime.status || 'Unknown',
-        airingDate: anime.aired?.string || 'Unknown',
-        synopsis: anime.synopsis || 'No synopsis available',
-        genre: anime.genres?.map((g: any) => g.name) || [],
-        rating: anime.score || 0,
-        image: anime.images?.jpg?.large_image_url,
-        mangaChapters: anime.chapters,
-        novelVolumes: anime.volumes,
-        relatedContent: {
-          manga: anime.related_manga?.map((m: any) => m.title).join(', '),
-          adaptations: anime.related_anime?.map((a: any) => a.title)
-        },
-        streamingPlatforms: anime.streaming || [],
-        studios: anime.studios?.map((s: any) => s.name) || [],
-        duration: anime.duration,
-        source: anime.source,
-        year: anime.year,
-        season: anime.season,
-        popularity: anime.popularity,
-        favorites: anime.favorites,
-        rank: anime.rank
-      }));
+      case 'games':
+        data = await fetchGameData(subtopic, category);
+        break;
 
-      return NextResponse.json({ 
-        success: true, 
-        data: animeId ? formattedData[0] : formattedData 
-      });
+      case 'movies':
+        data = await fetchMovieData(subtopic, category);
+        break;
+
+      case 'technology':
+        data = await fetchTechData(subtopic, category);
+        break;
+
+      case 'music':
+        data = await fetchMusicData(subtopic, category);
+        break;
+
+      case 'books':
+        data = await fetchBookData(subtopic, category);
+        break;
+
+      // Add more topic handlers...
+
+      default:
+        return NextResponse.json(
+          { error: 'Topic not supported' },
+          { status: 400 }
+        );
     }
 
-    // Handle other topic types...
-    return NextResponse.json({ error: 'Topic not supported' }, { status: 400 });
-
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('[TOPIC_INFO]', error);
     return NextResponse.json(
