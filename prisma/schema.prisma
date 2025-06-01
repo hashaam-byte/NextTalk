@@ -50,6 +50,8 @@ model User {
   likes                 Like[]
   comments              Comment[]
   media                 UserMedia[]
+  followedTopics        Topic[]           @relation("TopicFollowers")
+  topicPosts            TopicPost[]
 }
 
 model Chat {
@@ -214,7 +216,9 @@ model Like {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-
+  topicPost   TopicPost? @relation("PostLikes", fields: [topicPostId], references: [id])
+  topicPostId String?
+  
   @@unique([userId, postId])
   @@index([userId])
   @@index([postId])
@@ -229,7 +233,9 @@ model Comment {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-
+  topicPost   TopicPost? @relation("PostComments", fields: [topicPostId], references: [id])
+  topicPostId String?
+  
   @@index([userId])
   @@index([postId])
 }
@@ -350,4 +356,35 @@ model CallMetric {
   @@index([userId])
   @@index([type])
   @@index([timestamp])
+}
+
+model Topic {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  slug        String       @unique
+  description String?
+  icon        String?
+  color       String?
+  posts       TopicPost[]
+  followers   User[]       @relation("TopicFollowers")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model TopicPost {
+  id        String    @id @default(cuid())
+  title     String?
+  content   String
+  mediaUrl  String?
+  topicId   String
+  authorId  String
+  topic     Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes     Like[]    @relation("PostLikes")
+  comments  Comment[] @relation("PostComments")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([topicId])
+  @@index([authorId])
 }

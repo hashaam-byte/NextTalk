@@ -11,7 +11,27 @@ const nextConfig = {
       'localhost',
       'res.cloudinary.com',
       'i3.ytimg.com',
-      'i.pravatar.cc'
+      'i.pravatar.cc',
+      'cdn.myanimelist.net',
+      'api.jikan.moe',
+      'media.kitsu.io',
+      'cdn.anilist.co',
+      'artworks.thetvdb.com',
+      'image.tmdb.org',
+      'images.unsplash.com',
+      'avatars.githubusercontent.com'
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.myanimelist.net',
+        pathname: '/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+        pathname: '/**',
+      }
     ]
   },
   webpack: (config) => {

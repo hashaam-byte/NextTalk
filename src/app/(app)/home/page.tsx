@@ -6,10 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageSquare, Users, Video, Bell, 
   ArrowRight, Calendar, Heart, Sparkles, 
-  Activity, BookOpen, UserPlus, Star, Camera
+  Activity, BookOpen, UserPlus, Star, Camera, Cpu, Film, Gamepad, Tv, Trophy, Code
 } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import { TOPIC_CATEGORIES } from '@/config/topics';
 
 const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="100%25" height="100%25" fill="%234B5563"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="14" fill="white" text-anchor="middle" dy=".3em"%3E?%3C/text%3E%3C/svg%3E';
 
@@ -30,6 +31,14 @@ interface Activity {
     name: string;
     avatar?: string;
   };
+}
+
+interface RecentTopicActivity {
+  title: string;
+  topic: string;
+  timeAgo: string;
+  icon: any;
+  color: string;
 }
 
 export default function HomePage() {
@@ -359,38 +368,70 @@ export default function HomePage() {
     </div>
   );
 
+  const recentTopicActivity: RecentTopicActivity[] = [
+    {
+      title: "New AI Framework Released",
+      topic: "Programming",
+      timeAgo: "2h ago",
+      icon: Code,
+      color: "bg-cyan-500/20 text-cyan-400"
+    },
+    {
+      title: "Advanced ML Workshop",
+      topic: "Education",
+      timeAgo: "3h ago",
+      icon: BookOpen,
+      color: "bg-blue-500/20 text-blue-400"
+    },
+    {
+      title: "Latest Movie Reviews",
+      topic: "Movies",
+      timeAgo: "4h ago",
+      icon: Film,
+      color: "bg-red-500/20 text-red-400"
+    },
+    {
+      title: "Sports Championship",
+      topic: "Sports",
+      timeAgo: "5h ago",
+      icon: Trophy,
+      color: "bg-green-500/20 text-green-400"
+    }
+  ];
+
   const SuggestedContent = () => (
     <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">Suggested for You</h2>
-        <button className="text-xs text-purple-400 hover:text-purple-300">
-          Refresh
+        <h2 className="text-lg font-semibold text-white">Explore Topics</h2>
+        <button
+          onClick={() => router.push('/topics')}
+          className="text-xs text-purple-400 hover:text-purple-300 flex items-center"
+        >
+          View All <ArrowRight size={14} className="ml-1" />
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {[
-          { title: "Photography Group", icon: Camera, count: "12 members", color: "bg-indigo-500/20 text-indigo-400" },
-          { title: "Coding Workshop", icon: BookOpen, count: "6 events", color: "bg-cyan-500/20 text-cyan-400" },
-          { title: "Fitness Challenge", icon: Activity, count: "8 participants", color: "bg-green-500/20 text-green-400" },
-          { title: "Movie Night", icon: Star, count: "Tomorrow 8PM", color: "bg-amber-500/20 text-amber-400" }
-        ].map((item, index) => (
-          <motion.div
-            key={index}
-            whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.05)" }}
-            whileTap={{ scale: 0.98 }}
-            className="flex items-center p-3 rounded-lg cursor-pointer border border-white/5"
-          >
-            <div className={`p-2 rounded-lg mr-3 ${item.color}`}>
-              <item.icon size={18} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">{item.title}</p>
-              <p className="text-xs text-gray-400">{item.count}</p>
-            </div>
-            <ArrowRight size={16} className="ml-auto text-gray-400" />
-          </motion.div>
-        ))}
+        {TOPIC_CATEGORIES.slice(0, 2).flatMap(category => 
+          category.topics.slice(0, 2).map(topic => (
+            <motion.div
+              key={topic.id}
+              whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.05)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => router.push(`/topics/${topic.id}`)}
+              className="flex items-center p-3 rounded-lg cursor-pointer border border-white/5"
+            >
+              <div className={`p-2 rounded-lg mr-3 ${topic.color}`}>
+                <topic.icon size={18} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{topic.name}</p>
+                <p className="text-xs text-gray-400 truncate">{topic.description}</p>
+              </div>
+              <ArrowRight size={16} className="ml-2 text-gray-400 flex-shrink-0" />
+            </motion.div>
+          ))
+        )}
       </div>
     </div>
   );
