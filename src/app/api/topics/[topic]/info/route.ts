@@ -42,8 +42,6 @@ export async function GET(
         data = await fetchBookData(subtopic, category);
         break;
 
-      // Add more topic handlers...
-
       default:
         return NextResponse.json(
           { error: 'Topic not supported' },
