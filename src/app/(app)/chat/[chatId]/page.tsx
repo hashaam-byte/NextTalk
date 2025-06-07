@@ -2,21 +2,27 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Smile, Video, Phone, MoreVertical, Copy, Forward, Star, Pin, Trash, Flag, Image as ImageIcon, MessageSquare, Play, Plus, Settings, FileText, Search, BellOff, Download, User, Wallpaper, History, Globe, Calendar, Palette, X, Upload } from 'lucide-react';
-import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useDropzone } from 'react-dropzone';
+import {
+  ArrowLeft, Send, Smile, Video, Phone, MoreVertical,
+  Copy, Forward, Star, Pin, Trash, Flag, Image as ImageIcon,
+  MessageSquare, Play, Plus, Search, BellOff, Download,
+  User, Wallpaper, History, Globe, Calendar, Palette, X, Upload
+} from 'lucide-react';
+
+import { useCall } from '@/hooks/useCall';
 import EmojiPicker from '@/components/chat/EmojiPicker';
 import StickerPicker from '@/components/chat/StickerPicker';
 import GifPicker from '@/components/chat/GifPicker';
-import { useCall } from '@/hooks/useCall';
 import CallOverlay from '@/components/call/CallOverlay';
 import ContactDrawer from '@/components/chat/ContactDrawer';
-import { videoClient } from '@/lib/stream';
-import { SelectedMedia } from '@/types/chat';
 import CallConfirmDialog from '@/components/chat/CallConfirmDialog';
-import { StreamVideo, StreamCall } from '@stream-io/video-react-sdk';
-import { useDropzone } from 'react-dropzone';
+import MediaViewer from '@/components/chat/MediaViewer';
+import { videoClient } from '@/lib/stream';
+import type { SelectedMedia } from '@/types/chat';
 
 const PICKER_ITEMS = [
   { type: 'emoji', icon: '😊', label: 'Emojis' },
@@ -69,8 +75,6 @@ interface CallNotification {
   };
   startTime?: Date;
 }
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export default function ChatPage() {
   const { chatId } = useParams();
@@ -207,15 +211,33 @@ export default function ChatPage() {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`${BACKEND_URL}/chat/${chatId}/messages`);
+        const response = await fetch(`/api/chat/${chatId}/messages`);
         const data = await response.json();
-        setMessages(data.messages || []);
+        
+        if (!data.messages) {
+          console.error('No messages received:', data);
+          setMessages([]);
+          return;
+        }
+        
+        // Ensure all messages have proper date objects
+        const processedMessages = data.messages.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.createdAt || Date.now())
+        }));
+        
+        setMessages(processedMessages);
       } catch (error) {
         console.error('Error fetching messages:', error);
+        setMessages([]);
       }
     };
 
-    fetchMessages();
+    if (chatId) {
+      fetchMessages();
+      const interval = setInterval(fetchMessages, 3000);
+      return () => clearInterval(interval);
+    }
   }, [chatId]);
 
   useEffect(() => {
@@ -345,7 +367,7 @@ export default function ChatPage() {
     setMessage('');
 
     try {
-      const response = await fetch(`${BACKEND_URL}/chat/${chatId}/messages`, {
+      const response = await fetch(`/api/chat/${chatId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
@@ -506,7 +528,7 @@ export default function ChatPage() {
       const { callId, streamToken } = await response.json();
 
       // Initialize Stream call
-      const streamCall = await streamClient.call('default', callId);
+      const streamCall = await videoClient.call('default', callId);
       await streamCall.getOrCreate({ 
         members: [session.user.id, chatInfo.id],
         options: { ring: true }
@@ -1228,22 +1250,6 @@ export default function ChatPage() {
                 placeholder="Type a message..."
                 className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
               />
-              
-              {/* Send Button */}
-              <button
-                type="submit"
-                disabled={!message.trim()}
-                className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-50"
-              >
-                <Send size={20} />
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Message Actions Menu */}
-        <AnimatePresence>
-          {showMessageActions && selectedMessage && (
               
               {/* Send Button */}
               <button
