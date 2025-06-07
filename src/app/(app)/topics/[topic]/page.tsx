@@ -40,10 +40,20 @@ export default function TopicPage() {
           : `/api/topics/${topic}/info`;
         const response = await fetch(url);
         const data = await response.json();
-        setInfo(data.data || []);
+        
+        // Ensure we always set an array, even if empty
+        if (Array.isArray(data.data?.items)) {
+          setInfo(data.data.items);
+        } else if (data.data) {
+          // If single item, convert to array
+          setInfo([data.data]);
+        } else {
+          setInfo([]);
+        }
       } catch (error) {
         setError('Failed to load information');
         console.error('Error fetching topic info:', error);
+        setInfo([]); // Set empty array on error
       } finally {
         setLoading(false);
       }

@@ -212,34 +212,36 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {dashboardData.activities.map((activity: Activity) => (
+          {dashboardData.activities.map((activity: Activity, index: number) => (
             <motion.div 
-              key={activity.id}
-              initial={{ opacity: 0, y: 10 }}
+              key={`${activity.id}-${index}`}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex items-start space-x-3 border-b border-white/5 pb-3"
+              transition={{ delay: index * 0.1 }}
+              className="bg-white/5 rounded-xl p-4 backdrop-blur-sm"
             >
-              <div className="flex-shrink-0 mt-1">
-                <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white/10">
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
-                    {activity?.user?.name?.[0] || '?'}
+              <div className="flex items-start space-x-3 border-b border-white/5 pb-3">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white/10">
+                    <div className="w-full h-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+                      {activity?.user?.name?.[0] || '?'}
+                    </div>
                   </div>
                 </div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-200">
+                    <span className="font-medium">{activity.content}</span>
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {formatActivityTime(activity.timestamp)}
+                  </p>
+                </div>
+                {activity.type === 'message' && (
+                  <button className="p-1.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white">
+                    <ArrowRight size={16} />
+                  </button>
+                )}
               </div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-200">
-                  <span className="font-medium">{activity.content}</span>
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {formatActivityTime(activity.timestamp)}
-                </p>
-              </div>
-              {activity.type === 'message' && (
-                <button className="p-1.5 bg-white/5 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white">
-                  <ArrowRight size={16} />
-                </button>
-              )}
             </motion.div>
           ))}
         </div>
@@ -399,42 +401,44 @@ export default function HomePage() {
     }
   ];
 
-  const SuggestedContent = () => (
-    <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">Explore Topics</h2>
-        <button
-          onClick={() => router.push('/topics')}
-          className="text-xs text-purple-400 hover:text-purple-300 flex items-center"
-        >
-          View All <ArrowRight size={14} className="ml-1" />
-        </button>
-      </div>
+  const SuggestedContent: React.FC = () => {
+    return (
+      <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Explore Topics</h2>
+          <button
+            onClick={() => router.push('/topics')}
+            className="text-sm text-purple-400 hover:text-purple-300"
+          >
+            View All
+          </button>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {TOPIC_CATEGORIES.slice(0, 2).flatMap(category => 
-          category.topics.slice(0, 2).map(topic => (
-            <motion.div
-              key={topic.id}
-              whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.05)" }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => router.push(`/topics/${topic.id}`)}
-              className="flex items-center p-3 rounded-lg cursor-pointer border border-white/5"
-            >
-              <div className={`p-2 rounded-lg mr-3 ${topic.color}`}>
-                <topic.icon size={18} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{topic.name}</p>
-                <p className="text-xs text-gray-400 truncate">{topic.description}</p>
-              </div>
-              <ArrowRight size={16} className="ml-2 text-gray-400 flex-shrink-0" />
-            </motion.div>
-          ))
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {TOPIC_CATEGORIES.slice(0, 2).flatMap(category => 
+            category.topics.slice(0, 2).map(topic => (
+              <motion.div
+                key={topic.id}
+                whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.05)" }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push(`/topics/${topic.id}`)}
+                className="flex items-center p-3 rounded-lg cursor-pointer border border-white/5"
+              >
+                <div className={`p-2 rounded-lg mr-3 ${topic.color}`}>
+                  <topic.icon size={18} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{topic.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{topic.description}</p>
+                </div>
+                <ArrowRight size={16} className="ml-2 text-gray-400 flex-shrink-0" />
+              </motion.div>
+            ))
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (status === 'loading') {
     return (

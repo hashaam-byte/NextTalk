@@ -19,7 +19,9 @@ const nextConfig = {
       'artworks.thetvdb.com',
       'image.tmdb.org',
       'images.unsplash.com',
-      'avatars.githubusercontent.com'
+      'avatars.githubusercontent.com',
+      'media.kitsu.app',
+      'static.wikia.nocookie.net'
     ],
     remotePatterns: [
       {

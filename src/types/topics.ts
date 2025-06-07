@@ -100,4 +100,24 @@ export interface BookDetails extends BaseTopicDetails {
   formats: string[];
 }
 
+export interface TopicItem {
+  id: string;
+  title: string;
+  description?: string;
+  image?: string;
+  url?: string;
+  rating?: number;
+  tags?: string[];
+  metadata?: Record<string, any>;
+}
+
+export interface TopicResponse {
+  items: TopicItem[];
+  pagination?: {
+    hasMore: boolean;
+    nextPage?: number;
+    total?: number;
+  };
+}
+
 // Add more topic types as needed...
