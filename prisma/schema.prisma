@@ -195,65 +195,6 @@ model UserSettings {
   @@index([userId])
 }
 
-model Post {
-  id        String    @id @default(cuid())
-  content   String
-  mediaUrl  String?
-  userId    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes     Like[]
-  comments  Comment[]
-
-  @@index([userId])
-}
-
-model Like {
-  id        String   @id @default(cuid())
-  userId    String
-  postId    String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  topicPost   TopicPost? @relation("PostLikes", fields: [topicPostId], references: [id])
-  topicPostId String?
-  
-  @@unique([userId, postId])
-  @@index([userId])
-  @@index([postId])
-}
-
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  userId    String
-  postId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  topicPost   TopicPost? @relation("PostComments", fields: [topicPostId], references: [id])
-  topicPostId String?
-  
-  @@index([userId])
-  @@index([postId])
-}
-
-model UserMedia {
-  id        String   @id @default(cuid())
-  userId    String
-  url       String
-  type      String // 'image', 'video', 'sticker', 'gif'
-  fileType  String // MIME type
-  useCount  Int      @default(0)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([type])
-}
-
 enum MediaType {
   IMAGE
   VIDEO
@@ -272,6 +213,12 @@ enum CallStatus {
 enum CallType {
   AUDIO
   VIDEO
+}
+
+enum Visibility {
+  PUBLIC
+  CONTACTS
+  PRIVATE
 }
 
 model Call {
@@ -387,4 +334,66 @@ model TopicPost {
 
   @@index([topicId])
   @@index([authorId])
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  content     String
+  mediaUrl    String?
+  userId      String
+  visibility  Visibility @default(PUBLIC)
+  viewersIds  String[]   @default([])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  comments    Comment[]
+
+  @@index([userId])
+  @@index([visibility])
+}
+
+model Like {
+  id          String     @id @default(cuid())
+  userId      String
+  postId      String
+  createdAt   DateTime   @default(now())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  topicPost   TopicPost? @relation("PostLikes", fields: [topicPostId], references: [id])
+  topicPostId String?
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+model Comment {
+  id          String     @id @default(cuid())
+  content     String
+  userId      String
+  postId      String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  topicPost   TopicPost? @relation("PostComments", fields: [topicPostId], references: [id])
+  topicPostId String?
+
+  @@index([userId])
+  @@index([postId])
+}
+
+model UserMedia {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  type      String
+  fileType  String
+  useCount  Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
 }

@@ -70,6 +70,8 @@ interface CallNotification {
   startTime?: Date;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 export default function ChatPage() {
   const { chatId } = useParams();
   const router = useRouter();
@@ -205,33 +207,15 @@ export default function ChatPage() {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`/api/chat/${chatId}/messages`);
+        const response = await fetch(`${BACKEND_URL}/chat/${chatId}/messages`);
         const data = await response.json();
-        
-        if (!data.messages) {
-          console.error('No messages received:', data);
-          setMessages([]);
-          return;
-        }
-        
-        // Ensure all messages have proper date objects
-        const processedMessages = data.messages.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.createdAt || Date.now())
-        }));
-        
-        setMessages(processedMessages);
+        setMessages(data.messages || []);
       } catch (error) {
         console.error('Error fetching messages:', error);
-        setMessages([]);
       }
     };
 
-    if (chatId) {
-      fetchMessages();
-      const interval = setInterval(fetchMessages, 3000);
-      return () => clearInterval(interval);
-    }
+    fetchMessages();
   }, [chatId]);
 
   useEffect(() => {
@@ -361,7 +345,7 @@ export default function ChatPage() {
     setMessage('');
 
     try {
-      const response = await fetch(`/api/chat/${chatId}/messages`, {
+      const response = await fetch(`${BACKEND_URL}/chat/${chatId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
@@ -1244,6 +1228,22 @@ export default function ChatPage() {
                 placeholder="Type a message..."
                 className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
               />
+              
+              {/* Send Button */}
+              <button
+                type="submit"
+                disabled={!message.trim()}
+                className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-50"
+              >
+                <Send size={20} />
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Message Actions Menu */}
+        <AnimatePresence>
+          {showMessageActions && selectedMessage && (
               
               {/* Send Button */}
               <button
