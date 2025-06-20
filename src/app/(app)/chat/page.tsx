@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import LoadingPage from '@/components/chat/LoadingPage';
 import ImageViewer from '@/components/ImageViewer';
+import { useBlurOverlay } from '../layout';
 
 // Enhanced Chat type definition
 interface Chat {
@@ -122,6 +123,7 @@ export default function ChatListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { setBlur } = useBlurOverlay();
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -242,6 +244,11 @@ export default function ChatListPage() {
       document.body.classList.remove('backdrop-blur-sm');
     };
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    setBlur(isMenuOpen);
+    return () => setBlur(false);
+  }, [isMenuOpen, setBlur]);
 
   const handleChatSelect = (chatId: string) => {
     if (isSelectionMode) {
@@ -386,14 +393,6 @@ export default function ChatListPage() {
         {/* Animated grid background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
       </div>
-
-      {/* Add overlay div for blur effect */}
-      {isMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-all duration-300"
-          onClick={() => setIsMenuOpen(false)}
-        />
-      )}
 
       {/* Header */}
       <div className={`relative ${isMenuOpen ? 'z-50' : 'z-10'} flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg`}>
