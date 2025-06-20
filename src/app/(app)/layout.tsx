@@ -57,16 +57,21 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
                   </div>
                   
+                  {/* Blur overlay (always below z-50 menus) */}
+                  {blur && (
+                    <div className="blur-overlay fixed inset-0 z-40 pointer-events-auto bg-black/20 backdrop-blur-sm transition-all duration-300" />
+                  )}
+
                   {/* Desktop Sidebar and Main Content with flexible layout */}
                   <div className="flex w-full h-screen relative z-10">
-                    {/* Sidebar - Now part of the flex layout */}
+                    {/* Sidebar */}
                     {!isAuthPage && !isMobile && (
                       <div className="h-screen flex-shrink-0">
                         <Sidebar />
                       </div>
                     )}
                     
-                    {/* Main Content - Will be pushed by sidebar */}
+                    {/* Main Content */}
                     <main className="flex-1 min-w-0 h-screen overflow-y-auto">
                       {!isAuthPage && <Navbar />}
                       <div className="w-full">
@@ -74,11 +79,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
                       </div>
                     </main>
                   </div>
-
-                  {/* Blur overlay (placed after content, but before menus/dropdowns) */}
-                  {blur && (
-                    <div className="blur-overlay fixed inset-0 z-40 pointer-events-auto bg-black/20 backdrop-blur-sm transition-all duration-300" />
-                  )}
 
                   {/* Mobile Navigation */}
                   {!isAuthPage && isMobile && (
@@ -148,7 +148,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           }
           .blur-overlay {
             pointer-events: auto;
-            /* z-40 ensures menus with z-50+ are above the blur */
+            z-index: 40;
           }
         `}</style>
       </body>

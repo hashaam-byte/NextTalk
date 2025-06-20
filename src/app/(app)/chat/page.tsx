@@ -232,19 +232,6 @@ export default function ChatListPage() {
     };
   }, [isMenuOpen, contextMenu]);
 
-  // Add useLayoutEffect to handle body backdrop blur
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.classList.add('backdrop-blur-sm');
-    } else {
-      document.body.classList.remove('backdrop-blur-sm');
-    }
-    
-    return () => {
-      document.body.classList.remove('backdrop-blur-sm');
-    };
-  }, [isMenuOpen]);
-
   useEffect(() => {
     setBlur(isMenuOpen);
     return () => setBlur(false);
@@ -395,7 +382,7 @@ export default function ChatListPage() {
       </div>
 
       {/* Header */}
-      <div className={`relative ${isMenuOpen ? 'z-50' : 'z-10'} flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg`}>
+      <div className={`relative flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg`}>
         {isSelectionMode ? (
           /* Selection Mode Header */
           <div className="w-full flex items-center justify-between">
