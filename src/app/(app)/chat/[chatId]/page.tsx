@@ -792,7 +792,10 @@ export default function ChatPage() {
       exit={{ opacity: 0, scale: 0.95 }}
       className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-lg flex items-center justify-center"
     >
-      <div className="bg-gray-900/95 rounded-xl border border-white/10 p-4 w-96">
+      <div
+        className="bg-gray-900/95 rounded-xl border border-white/10 p-4 w-96 max-h-[90vh] overflow-y-auto"
+        style={{ overscrollBehavior: 'contain' }}
+      >
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-white font-medium">Choose Wallpaper</h3>
