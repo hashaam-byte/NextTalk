@@ -35,6 +35,7 @@ export default function Sidebar() {
     { name: 'Groups', icon: Users, path: '/groups' },
     { name: 'Reels', icon: Sparkles, path: '/reels' },
     { name: 'Camera', icon: Camera, path: '/camera' },
+    { name: 'App Selector', icon: Menu, path: '/apps'},
   ];
 
   const profileItems = [
@@ -100,63 +101,65 @@ export default function Sidebar() {
   
   // Desktop sidebar
   return (
-    <motion.div 
-      className={`h-full bg-black/30 backdrop-blur-lg border-r border-white/10 z-20 transition-all duration-300 overflow-hidden ${
-        isExpanded ? 'w-56' : 'w-20'
-      }`}
-      initial={false}
-      animate={{ width: isExpanded ? '14rem' : '5rem' }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
-        {isExpanded ? (
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
-              <MessageSquare size={16} className="text-white" />
-            </div>
-            <span className="ml-2 font-bold bg-gradient-to-r from-purple-400 to-cyan-400 text-transparent bg-clip-text">
-              NextTalk
-            </span>
-          </div>
-        ) : (
-          <div className="w-10 h-10 mx-auto rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
-            <MessageSquare size={18} className="text-white" />
-          </div>
-        )}
-        
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="rounded-full p-1 text-gray-400 hover:bg-white/10 transition-all"
-        >
-          <ChevronRight size={18} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-      
-      {/* Main Navigation */}
-      <div className="flex-1 py-4 space-y-1 overflow-y-auto scrollbar-thin">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            href={item.path}
-            className={`flex items-center px-3 py-3 mx-2 rounded-lg transition-all group ${
-              checkActive(item.path)
-                ? 'bg-gradient-to-r from-purple-600/20 to-cyan-600/20 text-purple-400 border border-purple-500/30'
-                : 'text-gray-400 hover:bg-white/5 hover:text-purple-400'
-            }`}
-          >
-            <item.icon size={20} className={`${isExpanded ? 'mr-3' : 'mx-auto'}`} />
-            {isExpanded && <span>{item.name}</span>}
-            
-            {!isExpanded && (
-              <div className="fixed left-20 -mt-10 px-2 py-1 bg-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50 text-xs text-white">
-                {item.name}
+    <>
+      <motion.div 
+        className={`h-full bg-black/30 backdrop-blur-lg border-r border-white/10 flex flex-col ${
+          isExpanded ? 'w-56' : 'w-20'
+        }`}
+        initial={false}
+        animate={{ width: isExpanded ? '14rem' : '5rem' }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+      >
+        {/* Header */}
+        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-white/10">
+          {isExpanded ? (
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
+                <MessageSquare size={16} className="text-white" />
               </div>
-            )}
-          </Link>
-        ))}
-      </div>
-      
-      {/* Bottom section */}
+              <span className="ml-2 font-bold bg-gradient-to-r from-purple-400 to-cyan-400 text-transparent bg-clip-text">
+                NextTalk
+              </span>
+            </div>
+          ) : (
+            <div className="w-10 h-10 mx-auto rounded-lg bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
+              <MessageSquare size={18} className="text-white" />
+            </div>
+          )}
+          
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="rounded-full p-1 text-gray-400 hover:bg-white/10 transition-all"
+          >
+            <ChevronRight size={18} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        
+        {/* Main Navigation */}
+        <div className="flex-1 py-4 space-y-1 overflow-y-auto scrollbar-thin">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              href={item.path}
+              className={`flex items-center px-3 py-3 mx-2 rounded-lg transition-all group ${
+                checkActive(item.path)
+                  ? 'bg-gradient-to-r from-purple-600/20 to-cyan-600/20 text-purple-400 border border-purple-500/30'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-purple-400'
+              }`}
+            >
+              <item.icon size={20} className={`${isExpanded ? 'mr-3' : 'mx-auto'}`} />
+              {isExpanded && <span>{item.name}</span>}
+              
+              {!isExpanded && (
+                <div className="fixed left-20 -mt-10 px-2 py-1 bg-gray-900 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-50 text-xs text-white">
+                  {item.name}
+                </div>
+              )}
+            </Link>
+          ))}
+        </div>
+        
+        {/* Bottom section */}
       <div className="p-4 space-y-1 border-t border-white/10">
         {profileItems.map((item) => (
           <Link
@@ -207,5 +210,6 @@ export default function Sidebar() {
         </motion.button>
       </div>
     </motion.div>
+    </>
   );
 }

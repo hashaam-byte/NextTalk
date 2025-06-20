@@ -52,6 +52,8 @@ model User {
   media                 UserMedia[]
   followedTopics        Topic[]           @relation("TopicFollowers")
   topicPosts            TopicPost[]
+  selectedApps          String[]          @default([]) // Add this field for storing selected app IDs
+  userApps              UserApp[]        // Add this line to create the opposite relation
 }
 
 model Chat {
@@ -396,4 +398,16 @@ model UserMedia {
 
   @@index([userId])
   @@index([type])
+}
+
+model UserApp {
+  id          String   @id @default(cuid())
+  userId      String
+  appId       String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, appId])
+  @@index([userId])
 }

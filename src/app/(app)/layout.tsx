@@ -33,11 +33,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html lang="en">
-      <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black">
+      <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black overflow-hidden">
         <SessionProvider> 
           <AuthProvider>
             <SocketProvider>
-              <div className="relative min-h-screen flex overflow-x-hidden">
+              <div className="relative h-screen flex">
                 {/* Background elements for futuristic design */}
                 <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
                   {/* Gradient blobs */}
@@ -49,23 +49,30 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
                 </div>
                 
-                {/* Desktop Sidebar - Fixed position */}
-                {!isAuthPage && !isMobile && (
-                  <div className="fixed left-0 top-0 h-screen">
+                {/* Desktop Sidebar and Main Content with flexible layout */}
+                <div className="flex w-full h-screen">
+                  {/* Sidebar - Now part of the flex layout */}
+                  {!isAuthPage && !isMobile && (
+                    <div className="h-screen flex-shrink-0">
+                      <Sidebar />
+                    </div>
+                  )}
+                  
+                  {/* Main Content - Will be pushed by sidebar */}
+                  <main className="flex-1 min-w-0 h-screen overflow-y-auto">
+                    {!isAuthPage && <Navbar />}
+                    <div className="w-full">
+                      {children}
+                    </div>
+                  </main>
+                </div>
+
+                {/* Mobile Navigation */}
+                {!isAuthPage && isMobile && (
+                  <div className="fixed bottom-0 left-0 w-full z-30">
                     <Sidebar />
                   </div>
                 )}
-                
-                {/* Main Content - Add left margin on desktop */}
-                <main className={`flex-1 flex flex-col w-full ${isMobile ? 'pb-20' : 'ml-20'}`}>
-                  {!isAuthPage && <Navbar />}
-                  <div className="flex-1 overflow-y-auto w-full">
-                    {children}
-                  </div>
-                </main>
-
-                {/* Mobile Bottom Navigation */}
-                {!isAuthPage && isMobile && <Sidebar />}
               </div>
             </SocketProvider>
           </AuthProvider>
