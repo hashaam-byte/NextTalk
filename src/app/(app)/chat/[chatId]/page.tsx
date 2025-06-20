@@ -729,6 +729,14 @@ export default function ChatPage() {
     }
   }, [chatId]);
 
+  // Add useDropzone hook for wallpaper picker
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { 'image/*': [] },
+    maxFiles: 1,
+    maxSize: 5 * 1024 * 1024, // 5MB
+    onDrop,
+  });
+
   // Add effect to fetch saved wallpaper
   useEffect(() => {
     const fetchWallpaper = async () => {
