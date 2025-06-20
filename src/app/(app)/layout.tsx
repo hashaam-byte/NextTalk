@@ -123,6 +123,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
           ::-webkit-scrollbar-thumb:hover {
             background: rgba(139, 92, 246, 0.8);
           }
+          
+          /* Add transition for backdrop blur */
+          body {
+            transition: backdrop-filter 0.3s ease;
+          }
+          
+          body.backdrop-blur-sm > *:not(.z-50) {
+            filter: blur(4px);
+            transition: filter 0.3s ease;
+          }
         `}</style>
       </body>
     </html>

@@ -230,6 +230,19 @@ export default function ChatListPage() {
     };
   }, [isMenuOpen, contextMenu]);
 
+  // Add useLayoutEffect to handle body backdrop blur
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.classList.add('backdrop-blur-sm');
+    } else {
+      document.body.classList.remove('backdrop-blur-sm');
+    }
+    
+    return () => {
+      document.body.classList.remove('backdrop-blur-sm');
+    };
+  }, [isMenuOpen]);
+
   const handleChatSelect = (chatId: string) => {
     if (isSelectionMode) {
       const newSelected = new Set(selectedChats);
@@ -374,8 +387,16 @@ export default function ChatListPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
       </div>
 
+      {/* Add overlay div for blur effect */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-all duration-300"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
+
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg">
+      <div className={`relative ${isMenuOpen ? 'z-50' : 'z-10'} flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg`}>
         {isSelectionMode ? (
           /* Selection Mode Header */
           <div className="w-full flex items-center justify-between">
