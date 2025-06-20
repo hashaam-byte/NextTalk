@@ -121,6 +121,7 @@ export default function ChatListPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedProfileImage, setSelectedProfileImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showBlur, setShowBlur] = useState(false); // Blur overlay state for dropdown
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { setBlur } = useBlurOverlay();
@@ -232,10 +233,11 @@ export default function ChatListPage() {
     };
   }, [isMenuOpen, contextMenu]);
 
+  // When menu opens, show blur overlay
   useEffect(() => {
-    setBlur(isMenuOpen);
-    return () => setBlur(false);
-  }, [isMenuOpen, setBlur]);
+    setShowBlur(isMenuOpen);
+    return () => setShowBlur(false);
+  }, [isMenuOpen]);
 
   const handleChatSelect = (chatId: string) => {
     if (isSelectionMode) {
@@ -370,7 +372,12 @@ export default function ChatListPage() {
   const unreadCount = chats.filter(chat => chat.unread > 0).length;
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative">
+      {/* Blur overlay for dropdown */}
+      {showBlur && (
+        <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-all duration-300" />
+      )}
+
       {/* Background glowing elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
@@ -382,7 +389,7 @@ export default function ChatListPage() {
       </div>
 
       {/* Header */}
-      <div className={`relative flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg`}>
+      <div className={`relative flex items-center justify-between p-4 border-b border-white/10 bg-black/30 backdrop-blur-lg z-50`}>
         {isSelectionMode ? (
           /* Selection Mode Header */
           <div className="w-full flex items-center justify-between">
@@ -466,7 +473,6 @@ export default function ChatListPage() {
               >
                 <ChevronDown size={18} className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
               </button>
-
               <AnimatePresence>
                 {isMenuOpen && (
                   <motion.div
