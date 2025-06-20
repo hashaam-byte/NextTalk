@@ -21,7 +21,6 @@ export function useBlurOverlay() {
 export default function RootLayout({ children }: RootLayoutProps) {
   const pathname = usePathname();
   const [isMobile, setIsMobile] = useState(false);
-  const [blur, setBlur] = useState(false);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -44,7 +43,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <SessionProvider>
           <AuthProvider>
             <SocketProvider>
-              <BlurContext.Provider value={{ setBlur }}>
+              {/* Provide a dummy setBlur so chat page can use context, but do nothing */}
+              <BlurContext.Provider value={{ setBlur: () => {} }}>
                 <div className="relative h-screen flex">
                   {/* Background elements for futuristic design */}
                   <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
@@ -57,11 +57,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25"></div>
                   </div>
                   
-                  {/* Blur overlay (always below z-50 menus) */}
-                  {blur && (
-                    <div className="blur-overlay fixed inset-0 z-40 pointer-events-auto bg-black/20 backdrop-blur-sm transition-all duration-300" />
-                  )}
-
                   {/* Desktop Sidebar and Main Content with flexible layout */}
                   <div className="flex w-full h-screen relative z-10">
                     {/* Sidebar */}
@@ -135,20 +130,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
           
           ::-webkit-scrollbar-thumb:hover {
             background: rgba(139, 92, 246, 0.8);
-          }
-          
-          /* Add transition for backdrop blur */
-          body {
-            transition: backdrop-filter 0.3s ease;
-          }
-          
-          body.backdrop-blur-sm > *:not(.z-50) {
-            filter: blur(4px);
-            transition: filter 0.3s ease;
-          }
-          .blur-overlay {
-            pointer-events: auto;
-            z-index: 40;
           }
         `}</style>
       </body>
