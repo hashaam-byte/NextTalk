@@ -41,15 +41,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body className="bg-gradient-to-br from-gray-900 via-gray-950 to-black overflow-hidden">
-        <SessionProvider> 
+        <SessionProvider>
           <AuthProvider>
             <SocketProvider>
               <BlurContext.Provider value={{ setBlur }}>
                 <div className="relative h-screen flex">
-                  {/* Blur overlay */}
-                  {blur && (
-                    <div className="blur-overlay fixed inset-0 z-40 pointer-events-none bg-black/20 backdrop-blur-sm transition-all duration-300" />
-                  )}
                   {/* Background elements for futuristic design */}
                   <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden -z-10">
                     {/* Gradient blobs */}
@@ -62,7 +58,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   </div>
                   
                   {/* Desktop Sidebar and Main Content with flexible layout */}
-                  <div className="flex w-full h-screen">
+                  <div className="flex w-full h-screen relative z-10">
                     {/* Sidebar - Now part of the flex layout */}
                     {!isAuthPage && !isMobile && (
                       <div className="h-screen flex-shrink-0">
@@ -79,9 +75,14 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     </main>
                   </div>
 
+                  {/* Blur overlay (placed after content, but before menus/dropdowns) */}
+                  {blur && (
+                    <div className="blur-overlay fixed inset-0 z-40 pointer-events-auto bg-black/20 backdrop-blur-sm transition-all duration-300" />
+                  )}
+
                   {/* Mobile Navigation */}
                   {!isAuthPage && isMobile && (
-                    <div className="fixed bottom-0 left-0 w-full z-30">
+                    <div className="fixed bottom-0 left-0 w-full z-50">
                       <Sidebar />
                     </div>
                   )}
@@ -90,7 +91,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </SocketProvider>
           </AuthProvider>
         </SessionProvider>
-        
         
         {/* Add this style to your global CSS or here for animations */}
         <style jsx global>{`
@@ -147,8 +147,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
             transition: filter 0.3s ease;
           }
           .blur-overlay {
-            /* Only the overlay is blurred, not menus with z-50 */
-            pointer-events: none;
+            pointer-events: auto;
+            /* z-40 ensures menus with z-50+ are above the blur */
           }
         `}</style>
       </body>
