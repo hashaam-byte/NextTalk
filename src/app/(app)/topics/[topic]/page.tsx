@@ -7,6 +7,7 @@ import {
   Search, ArrowLeft, Filter, Grid, List, Share2, Star 
 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link'; // Add this import for linking to the custom games page
 
 interface TopicInfo {
   title: string;
@@ -19,6 +20,7 @@ interface TopicInfo {
   episodes?: number;
   genres?: string[];
   subItems?: TopicInfo[];
+  // Add more fields as needed for other topics
 }
 
 export default function TopicPage() {
@@ -35,32 +37,119 @@ export default function TopicPage() {
     const fetchTopicInfo = async () => {
       try {
         setLoading(true);
+        // Always use the info endpoint for all topics
         const url = selectedSubTopic 
-          ? `/api/topics/${topic}/info?subTopic=${selectedSubTopic}`
-          : `/api/topics/${topic}/info`;
+          ? `/api/topics/${topic}/info?subTopic=${selectedSubTopic}&q=${encodeURIComponent(searchQuery)}`
+          : `/api/topics/${topic}/info${searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ''}`;
         const response = await fetch(url);
         const data = await response.json();
-        
-        // Ensure we always set an array, even if empty
+
+        // Normalize data for all topics
+        let items: TopicInfo[] = [];
         if (Array.isArray(data.data?.items)) {
-          setInfo(data.data.items);
+          let mappedItems = data.data.items.map((item: any) => {
+            // Anime
+            if (topic === 'anime') {
+              return {
+                title: item.title,
+                type: 'anime',
+                description: item.synopsis || item.description,
+                image: item.image,
+                rating: item.rating,
+                status: item.status,
+                episodes: item.episodes,
+                genres: item.genre || item.genres,
+              };
+            }
+            // Games
+            if (topic === 'games' || topic === 'gaming') {
+              return {
+                title: item.title || item.name,
+                type: 'game',
+                description: item.description || item.summary,
+                image: item.image || item.background_image,
+                rating: item.rating,
+                releaseDate: item.releaseDate || item.released,
+                genres: Array.isArray(item.genres)
+                  ? item.genres.map((g: any) => typeof g === 'string' ? g : g.name)
+                  : item.genres,
+              };
+            }
+            // Movies
+            if (topic === 'movies') {
+              return {
+                title: item.title || item.name,
+                type: 'movie',
+                description: item.overview || item.description,
+                image: item.poster || item.image,
+                rating: item.rating,
+                releaseDate: item.releaseDate,
+                genres: item.genres,
+              };
+            }
+            // Technology/Programming
+            if (topic === 'technology' || topic === 'programming') {
+              return {
+                title: item.title || item.full_name || item.name,
+                type: 'repo',
+                description: item.description,
+                image: undefined,
+                rating: item.stars || item.stargazers_count,
+                genres: item.topics,
+                releaseDate: item.updatedAt || item.updated_at,
+              };
+            }
+            // Music
+            if (topic === 'music') {
+              return {
+                title: item.name,
+                type: 'music',
+                description: item.artist || item.album || item.description,
+                image: item.image,
+                rating: item.popularity || item.rating,
+                genres: item.genres,
+                releaseDate: item.releaseDate,
+              };
+            }
+            // Books
+            if (topic === 'books') {
+              return {
+                title: item.title,
+                type: 'book',
+                description: item.description,
+                image: item.thumbnail,
+                rating: item.rating,
+                genres: item.categories,
+                releaseDate: item.publishedDate,
+              };
+            }
+            // Fallback
+            return {
+              title: item.title || item.name || 'Untitled',
+              type: topic as string,
+              description: item.description,
+              image: item.image,
+            };
+          });
+
+          // REMOVE custom games from main games/gaming page
+          // (No customGames injected here anymore)
+
+          items = mappedItems;
         } else if (data.data) {
-          // If single item, convert to array
-          setInfo([data.data]);
-        } else {
-          setInfo([]);
+          items = [data.data];
         }
+        setInfo(items);
       } catch (error) {
         setError('Failed to load information');
-        console.error('Error fetching topic info:', error);
-        setInfo([]); // Set empty array on error
+        setInfo([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTopicInfo();
-  }, [topic, selectedSubTopic]);
+  }, [topic, selectedSubTopic, searchQuery]);
 
   const renderTopicContent = () => {
     if (loading) {
@@ -143,6 +232,23 @@ export default function TopicPage() {
     );
   };
 
+  // Add a button to link to the custom games page if topic is games/gaming
+  function renderCustomGamesLink() {
+    if (topic === 'games' || topic === 'gaming') {
+      return (
+        <div className="mb-6 flex justify-end">
+          <Link
+            href={`/topics/${topic}/popular`}
+            className="inline-block px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow hover:from-purple-700 hover:to-indigo-700 transition"
+          >
+            View Popular Mobile Games
+          </Link>
+        </div>
+      );
+    }
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
       {/* Header */}
@@ -201,6 +307,7 @@ export default function TopicPage() {
         </div>
 
         {/* Content */}
+        {renderCustomGamesLink()}
         {renderTopicContent()}
       </div>
     </div>

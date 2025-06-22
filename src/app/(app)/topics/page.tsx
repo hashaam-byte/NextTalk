@@ -11,12 +11,23 @@ export default function TopicsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const filteredTopics = TOPIC_CATEGORIES.filter(category =>
-    category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    category.topics.some(topic => 
-      topic.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  // Filtered categories: only show categories that match search or have topics that match search
+  const filteredCategories = TOPIC_CATEGORIES
+    .map(category => {
+      // Filter topics within the category
+      const filteredTopics = category.topics.filter(topic =>
+        topic.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      // If category name matches, show all topics, else only filtered topics
+      if (category.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return { ...category };
+      }
+      if (filteredTopics.length > 0) {
+        return { ...category, topics: filteredTopics };
+      }
+      return null;
+    })
+    .filter(Boolean);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900">
@@ -52,7 +63,7 @@ export default function TopicsPage() {
 
         {/* Categories */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTopics.map((category) => (
+          {filteredCategories.map((category) => (
             <motion.div
               key={category.id}
               initial={{ opacity: 0, y: 20 }}

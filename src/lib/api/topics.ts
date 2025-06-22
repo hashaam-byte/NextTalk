@@ -72,7 +72,12 @@ export async function fetchAnimeData(query?: string) {
 export async function fetchGameData(query?: string) {
   try {
     const endpoint = `${API_ENDPOINTS.RAWG_API}/games`;
-    const response = await axios.get(endpoint);
+    const response = await axios.get(endpoint, {
+      params: {
+        key: process.env.RAWG_API_KEY, // <-- Make sure this is set and valid
+        search: query,
+      }
+    });
     return {
       items: response.data.results || [],
       stats: {
