@@ -411,3 +411,18 @@ model UserApp {
   @@unique([userId, appId])
   @@index([userId])
 }
+
+model Location {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  type        String   // e.g. 'restaurant', 'park', etc.
+  lat         Float
+  lng         Float
+  distance    Float?
+  rating      Float?
+  photos      String[] // URLs
+  isPopular   Boolean? @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

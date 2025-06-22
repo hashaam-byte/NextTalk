@@ -1,448 +1,536 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Camera as CameraIcon, Video, RotateCcw,
-  Image as ImageIcon, X, Download, Share, Trash2,
-  Sparkles, AlertCircle, Camera, CheckCircle2, XCircle, Layers
+import { 
+  ArrowLeft, 
+  Camera, 
+  Video, 
+  RotateCcw, 
+  Flashlight, 
+  FlashlightOff,
+  Circle,
+  Square,
+  Smile,
+  Palette,
+  Type,
+  Music,
+  Timer,
+  Grid3X3,
+  Download,
+  Share2
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Sidebar from '@/components/Sidebar';
-import FiltersComponent from '@/components/FiltersComponent';
-import ARFilter from '@/components/ARFilter';
-import { useRouter } from 'next/navigation';
 
-interface Post {
-  id: string;
-  type: 'photo' | 'video';
-  url: string;
-  caption: string;
-  visibility: 'public' | 'friends' | 'private';
-  category?: string;
-  tags?: string[];
-}
+type CameraMode = 'photo' | 'video';
+type FlashMode = 'off' | 'on' | 'auto';
 
 export default function CameraPage() {
-  const { status } = useSession();
   const router = useRouter();
-  const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
-  const [selectedFilter, setSelectedFilter] = useState('none');
-  const [filterMode, setFilterMode] = useState<'effect' | 'basic'>('effect');
-  const [mediaMode, setMediaMode] = useState<'photo' | 'video' | 'upload'>('photo');
-  const [isRecording, setIsRecording] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [cameraPermission, setCameraPermission] = useState<boolean | 'pending'>('pending');
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [capturedVideo, setCapturedVideo] = useState<string | null>(null);
-  const [uploadedMedia, setUploadedMedia] = useState<File | null>(null);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-
+  const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const recordingTimeRef = useRef<number>(0);
-  const [recordingTime, setRecordingTime] = useState<string>('00:00');
-  const messagesEndRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filterOptions = [
-    { name: 'Normal', value: 'none' },
-    { name: 'Grayscale', value: 'grayscale(100%)' },
-    { name: 'Sepia', value: 'sepia(100%)' },
-    { name: 'Invert', value: 'invert(80%)' },
-    { name: 'Blur', value: 'blur(2px)' },
+  const [mode, setMode] = useState<CameraMode>((searchParams?.get('mode') as CameraMode) || 'photo');
+  const [isRecording, setIsRecording] = useState(false);
+  const [flashMode, setFlashMode] = useState<FlashMode>('off');
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [capturedMedia, setCapturedMedia] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'photo' | 'video' | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('none');
+  const [showTimer, setShowTimer] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(3);
+  const [countdown, setCountdown] = useState(0);
+  const [showGrid, setShowGrid] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const filters = [
+    { name: 'none', label: 'None', style: '' },
+    { name: 'sepia', label: 'Sepia', style: 'sepia(100%)' },
+    { name: 'grayscale', label: 'B&W', style: 'grayscale(100%)' },
+    { name: 'vintage', label: 'Vintage', style: 'sepia(50%) contrast(120%) brightness(110%)' },
+    { name: 'cool', label: 'Cool', style: 'hue-rotate(180deg) saturate(150%)' },
+    { name: 'warm', label: 'Warm', style: 'hue-rotate(30deg) saturate(120%) brightness(110%)' },
   ];
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      window.location.href = '/login';
-    }
-  }, [status]);
+    startCamera();
+    return () => {
+      stopCamera();
+    };
+  }, [facingMode]);
 
   useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(() => setPermissionState('granted'))
-      .catch((err) => {
-        if (err.name === 'NotAllowedError') {
-          setPermissionState('denied');
-        }
-      });
-  }, []);
-
-  const requestCameraPermission = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      setPermissionState('granted');
-      initCamera(); // Initialize camera after permission is granted
-    } catch (error) {
-      console.error('Camera permission denied:', error);
-      setPermissionState('denied');
+    let interval: NodeJS.Timeout;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
     }
-  };
+    return () => clearInterval(interval);
+  }, [isRecording]);
 
-  const initCamera = async () => {
+  const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
           width: { ideal: 1280 },
-          height: { ideal: 720 }
+          height: { ideal: 720 },
         },
-        audio: mediaMode === 'video'
+        audio: mode === 'video',
       });
-      
+
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setCameraPermission(true);
+        videoRef.current.srcObject = mediaStream;
       }
+      setStream(mediaStream);
     } catch (error) {
-      console.error('Error initializing camera:', error);
-      setCameraPermission(false);
+      console.error('Error accessing camera:', error);
+      alert('Could not access camera. Please check permissions.');
     }
   };
 
-  useEffect(() => {
-    if (cameraPermission === 'pending' || facingMode) {
-      initCamera();
-    }
-
-    // Clean up function to stop camera when component unmounts
-    return () => {
-      const stream = videoRef.current?.srcObject as MediaStream;
-      if (stream) {
-        const tracks = stream.getTracks();
-        tracks.forEach(track => track.stop());
-      }
-    };
-  }, [cameraPermission, facingMode, initCamera]);
-
-  useEffect(() => {
-    const currentVideo = videoRef.current;
-    return () => {
-      if (currentVideo && currentVideo.srcObject) {
-        const stream = currentVideo.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
-  const toggleCamera = () => {
-    const newFacingMode = facingMode === 'user' ? 'environment' : 'user';
-
-    // Stop current stream
-    const stream = videoRef.current?.srcObject as MediaStream;
+  const stopCamera = () => {
     if (stream) {
-      const tracks = stream.getTracks();
-      tracks.forEach(track => track.stop());
+      stream.getTracks().forEach(track => track.stop());
     }
-
-    setFacingMode(newFacingMode);
   };
 
-  const toggleFilterMode = () => {
-    setFilterMode(prev => prev === 'effect' ? 'basic' : 'effect');
-    // Reset filters when switching modes
-    setSelectedFilter('none');
+  const switchCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   };
 
-  const takePhoto = () => {
-    if (countdown !== null) {
-      setCountdown(null);
+  const cycleFlash = () => {
+    setFlashMode(prev => {
+      switch (prev) {
+        case 'off': return 'on';
+        case 'on': return 'auto';
+        case 'auto': return 'off';
+        default: return 'off';
+      }
+    });
+  };
+
+  const startCountdown = (callback: () => void) => {
+    if (!showTimer) {
+      callback();
       return;
     }
 
-    // Start countdown from 3
-    setCountdown(3);
-
-    const countdownInterval = setInterval(() => {
+    setCountdown(timerSeconds);
+    const timer = setInterval(() => {
       setCountdown(prev => {
-        if (prev === 1) {
-          clearInterval(countdownInterval);
-          capturePhoto();
-          return null;
+        if (prev <= 1) {
+          clearInterval(timer);
+          callback();
+          return 0;
         }
-        return prev ? prev - 1 : null;
+        return prev - 1;
       });
     }, 1000);
   };
 
   const capturePhoto = () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+    startCountdown(() => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      if (!video || !canvas) return;
 
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Apply filter effects if any
-        if (selectedFilter !== 'none') {
-          ctx.filter = selectedFilter;
-        }
+      const context = canvas.getContext('2d');
+      if (!context) return;
 
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/png');
-        setCapturedImage(dataUrl);
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Apply filter
+      if (selectedFilter !== 'none') {
+        const filter = filters.find(f => f.name === selectedFilter);
+        context.filter = filter?.style || '';
+      }
+
+      context.drawImage(video, 0, 0);
+      
+      const imageData = canvas.toDataURL('image/jpeg', 0.9);
+      setCapturedMedia(imageData);
+      setMediaType('photo');
+    });
+  };
+
+  const startVideoRecording = () => {
+    if (!stream) return;
+
+    startCountdown(() => {
+      try {
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        chunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+          const videoUrl = URL.createObjectURL(blob);
+          setCapturedMedia(videoUrl);
+          setMediaType('video');
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+        setRecordingDuration(0);
+      } catch (error) {
+        console.error('Error starting video recording:', error);
+      }
+    });
+  };
+
+  const stopVideoRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleCapture = () => {
+    if (mode === 'photo') {
+      capturePhoto();
+    } else {
+      if (isRecording) {
+        stopVideoRecording();
+      } else {
+        startVideoRecording();
       }
     }
   };
 
-  const startRecording = () => {
-    if (!videoRef.current) return;
-
-    const stream = videoRef.current.srcObject as MediaStream;
-    chunksRef.current = [];
-
-    try {
-      mediaRecorderRef.current = new MediaRecorder(stream);
-
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/mp4' });
-        const videoUrl = URL.createObjectURL(blob);
-        setCapturedVideo(videoUrl);
-        setIsRecording(false);
-        recordingTimeRef.current = 0;
-        setRecordingTime('00:00');
-
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-        }
-      };
-
-      // Start recording
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-
-      // Start recording timer
-      timerRef.current = setInterval(() => {
-        recordingTimeRef.current += 1;
-        const minutes = Math.floor(recordingTimeRef.current / 60);
-        const seconds = recordingTimeRef.current % 60;
-        setRecordingTime(
-          `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-        );
-      }, 1000);
-    } catch (error) {
-      console.error('Error starting recording:', error);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  const handleRecordingButton = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
-  const discardCapture = () => {
-    setCapturedImage(null);
-    setCapturedVideo(null);
-  };
-
-  const downloadCapture = () => {
-    if (capturedImage) {
-      const link = document.createElement('a');
-      link.href = capturedImage;
-      link.download = `nexttalk-photo-${Date.now()}.png`;
-      link.click();
-    } else if (capturedVideo) {
-      const link = document.createElement('a');
-      link.href = capturedVideo;
-      link.download = `nexttalk-video-${Date.now()}.mp4`;
-      link.click();
-    }
-  };
-
-  const shareCapture = () => {
-    // This is a simplified implementation
-    // In a real app, you'd use the Web Share API or custom sharing options
-    alert('Sharing functionality would be implemented here!');
-  };
-
-  const handleFileUpload = (file: File) => {
-    setUploadedMedia(file);
-  };
-
-  const handleGooglePhotos = async () => {
-    // Google Photos API scope
-    const scope = 'https://www.googleapis.com/auth/photoslibrary.readonly';
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    
-    // Redirect to Google auth
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin)}/auth/callback&response_type=code&scope=${scope}&access_type=offline`;
-    
-    window.location.href = authUrl;
+  const retakeMedia = () => {
+    setCapturedMedia(null);
+    setMediaType(null);
+    startCamera();
   };
 
   const handlePost = async () => {
-    if (!uploadedMedia) return;
-
-    const formData = new FormData();
-    formData.append('media', uploadedMedia);
-    formData.append('type', mediaMode);
-    formData.append('visibility', 'public'); // or let user choose
+    if (!capturedMedia) return;
 
     try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        router.push('/reels');
+      // Here you would upload the media
+      const formData = new FormData();
+      
+      if (mediaType === 'photo') {
+        // Convert data URL to blob
+        const response = await fetch(capturedMedia);
+        const blob = await response.blob();
+        formData.append('media', blob, 'photo.jpg');
+      } else if (mediaType === 'video') {
+        // Handle video blob
+        const response = await fetch(capturedMedia);
+        const blob = await response.blob();
+        formData.append('media', blob, 'video.webm');
       }
+
+      formData.append('type', mediaType || '');
+      formData.append('filter', selectedFilter);
+
+      console.log('Posting media...');
+      
+      // Always redirect to reels page after posting
+      router.push('/reels');
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Error posting media:', error);
     }
   };
 
-  if (status === 'loading') {
-    return <div>Loading...</div>;
-  }
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4">
-      {/* Mode Selection */}
-      <div className="mb-4 flex justify-center space-x-4">
-        <button
-          onClick={() => setMediaMode('photo')}
-          className={`px-4 py-2 rounded-full ${
-            mediaMode === 'photo' ? 'bg-purple-600' : 'bg-white/10'
-          }`}
-        >
-          Photo
-        </button>
-        <button
-          onClick={() => setMediaMode('video')}
-          className={`px-4 py-2 rounded-full ${
-            mediaMode === 'video' ? 'bg-purple-600' : 'bg-white/10'
-          }`}
-        >
-          Video
-        </button>
-        <button
-          onClick={() => setMediaMode('upload')}
-          className={`px-4 py-2 rounded-full ${
-            mediaMode === 'upload' ? 'bg-purple-600' : 'bg-white/10'
-          }`}
-        >
-          Upload
-        </button>
-      </div>
-
-      {/* Camera/Video Preview */}
-      {(mediaMode === 'photo' || mediaMode === 'video') && (
-        <div className="relative aspect-[9/16] max-w-md mx-auto rounded-xl overflow-hidden">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
-          
-          {/* Recording indicator */}
-          {isRecording && (
-            <div className="absolute top-4 left-4 bg-red-500 px-2 py-1 rounded-full text-sm">
-              {recordingDuration}s
-            </div>
-          )}
-          
-          {/* Capture Controls */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-4">
-            {mediaMode === 'photo' ? (
-              <button
-                onClick={takePhoto}
-                className="w-16 h-16 rounded-full bg-white"
-              />
-            ) : (
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`w-16 h-16 rounded-full ${
-                  isRecording ? 'bg-red-500' : 'bg-white'
-                }`}
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Upload Section */}
-      {mediaMode === 'upload' && (
-        <div className="text-center">
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*,video/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileUpload(file);
-            }}
-            className="hidden"
-          />
+  if (capturedMedia) {
+    return (
+      <div className="min-h-screen bg-black text-white relative">
+        {/* Header */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-6 py-3 bg-purple-600 rounded-lg mb-4"
+            onClick={retakeMedia}
+            className="p-3 rounded-full bg-black/50 backdrop-blur-sm"
           >
-            Choose File
+            <ArrowLeft className="w-6 h-6" />
           </button>
-          <button
-            onClick={handleGooglePhotos}
-            className="px-6 py-3 bg-blue-600 rounded-lg block w-full"
-          >
-            Import from Google Photos
-          </button>
-        </div>
-      )}
-
-      {/* Preview & Post */}
-      {uploadedMedia && (
-        <div className="mt-4">
-          {uploadedMedia.type.startsWith('image/') ? (
-            <img
-              src={URL.createObjectURL(uploadedMedia)}
-              alt="Preview"
-              className="max-w-md mx-auto rounded-xl"
-            />
-          ) : (
-            <video
-              src={URL.createObjectURL(uploadedMedia)}
-              controls
-              className="max-w-md mx-auto rounded-xl"
-            />
-          )}
           
           <button
             onClick={handlePost}
-            className="mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg block w-full max-w-md mx-auto"
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full font-medium"
           >
             Post
           </button>
         </div>
+
+        {/* Media Preview */}
+        <div className="absolute inset-0">
+          {mediaType === 'photo' ? (
+            <img
+              src={capturedMedia}
+              alt="Captured"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <video
+              src={capturedMedia}
+              className="w-full h-full object-cover"
+              controls
+            />
+          )}
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="absolute bottom-8 left-4 right-4 z-20 flex justify-center space-x-4">
+          <button
+            onClick={retakeMedia}
+            className="p-4 rounded-full bg-gray-800/80 backdrop-blur-sm"
+          >
+            <RotateCcw className="w-6 h-6" />
+          </button>
+          
+          <button className="p-4 rounded-full bg-gray-800/80 backdrop-blur-sm">
+            <Download className="w-6 h-6" />
+          </button>
+          
+          <button className="p-4 rounded-full bg-gray-800/80 backdrop-blur-sm">
+            <Share2 className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Camera Stream */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`absolute inset-0 w-full h-full object-cover ${
+          selectedFilter !== 'none' 
+            ? `filter ${filters.find(f => f.name === selectedFilter)?.style}` 
+            : ''
+        }`}
+      />
+
+      {/* Hidden canvas for photo capture */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Grid Overlay */}
+      {showGrid && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+            {Array(9).fill(0).map((_, i) => (
+              <div key={i} className="border border-white/20" />
+            ))}
+          </div>
+        </div>
       )}
+
+      {/* Countdown Overlay */}
+      {countdown > 0 && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
+          <motion.div
+            key={countdown}
+            initial={{ scale: 1.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            className="text-8xl font-bold text-white"
+          >
+            {countdown}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
+        <button
+          onClick={() => router.back()}
+          className="p-3 rounded-full bg-black/50 backdrop-blur-sm"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={cycleFlash}
+            className="p-3 rounded-full bg-black/50 backdrop-blur-sm"
+          >
+            {flashMode === 'off' ? (
+              <FlashlightOff className="w-6 h-6" />
+            ) : (
+              <Flashlight className="w-6 h-6" />
+            )}
+          </button>
+          
+          <button
+            onClick={() => setShowTimer(!showTimer)}
+            className={`p-3 rounded-full backdrop-blur-sm ${
+              showTimer ? 'bg-yellow-500/50' : 'bg-black/50'
+            }`}
+          >
+            <Timer className="w-6 h-6" />
+          </button>
+          
+          <button
+            onClick={() => setShowGrid(!showGrid)}
+            className={`p-3 rounded-full backdrop-blur-sm ${
+              showGrid ? 'bg-white/20' : 'bg-black/50'
+            }`}
+          >
+            <Grid3X3 className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Recording Duration */}
+      {isRecording && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-red-600 px-4 py-2 rounded-full flex items-center space-x-2">
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+            <span className="font-mono">{formatDuration(recordingDuration)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mode Switcher */}
+      <div className="absolute top-20 left-4 right-4 z-20 flex justify-center">
+        <div className="bg-black/50 backdrop-blur-sm rounded-full p-1">
+          <button
+            onClick={() => setMode('photo')}
+            className={`px-6 py-2 rounded-full font-medium transition-colors ${
+              mode === 'photo' 
+                ? 'bg-white text-black' 
+                : 'text-white'
+            }`}
+          >
+            Photo
+          </button>
+          <button
+            onClick={() => setMode('video')}
+            className={`px-6 py-2 rounded-full font-medium transition-colors ${
+              mode === 'video' 
+                ? 'bg-white text-black' 
+                : 'text-white'
+            }`}
+          >
+            Video
+          </button>
+        </div>
+      </div>
+
+      {/* Side Controls */}
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 space-y-4">
+        <button
+          onClick={switchCamera}
+          className="p-4 rounded-full bg-black/50 backdrop-blur-sm"
+        >
+          <RotateCcw className="w-6 h-6" />
+        </button>
+        
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`p-4 rounded-full backdrop-blur-sm ${
+            showFilters ? 'bg-purple-500/50' : 'bg-black/50'
+          }`}
+        >
+          <Palette className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Filters Panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            className="absolute right-20 top-1/2 transform -translate-y-1/2 z-20"
+          >
+            <div className="bg-black/80 backdrop-blur-lg rounded-2xl p-4 space-y-3">
+              {filters.map((filter) => (
+                <button
+                  key={filter.name}
+                  onClick={() => setSelectedFilter(filter.name)}
+                  className={`block w-16 h-16 rounded-lg border-2 text-xs font-medium ${
+                    selectedFilter === filter.name
+                      ? 'border-purple-500 bg-purple-500/20'
+                      : 'border-gray-600 bg-gray-800/50'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Timer Settings */}
+      {showTimer && (
+        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-black/80 backdrop-blur-lg rounded-2xl p-4 flex space-x-2">
+            {[3, 5, 10].map((seconds) => (
+              <button
+                key={seconds}
+                onClick={() => setTimerSeconds(seconds)}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  timerSeconds === seconds
+                    ? 'bg-yellow-500 text-black'
+                    : 'bg-gray-700 text-white'
+                }`}
+              >
+                {seconds}s
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Controls */}
+      <div className="absolute bottom-8 left-4 right-4 z-20 flex items-center justify-between">
+        <button className="p-4 rounded-full bg-black/50 backdrop-blur-sm">
+          <Smile className="w-6 h-6" />
+        </button>
+
+        {/* Capture Button */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={handleCapture}
+          className={`relative p-2 rounded-full ${
+            isRecording 
+              ? 'bg-red-600' 
+              : 'bg-white'
+          }`}
+        >
+          {mode === 'photo' ? (
+            <Circle className="w-16 h-16 text-black" />
+          ) : isRecording ? (
+            <Square className="w-16 h-16 text-white" />
+          ) : (
+            <Circle className="w-16 h-16 text-black" />
+          )}
+        </motion.button>
+
+        <button className="p-4 rounded-full bg-black/50 backdrop-blur-sm">
+          <Music className="w-6 h-6" />
+        </button>
+      </div>
     </div>
   );
 }
-
-// Add this CSS to your global styles or component
-const styles = `
-  .mirror {
-    transform: scaleX(-1);
-  }
-`;
