@@ -19,7 +19,8 @@ import {
   Timer,
   Grid3X3,
   Download,
-  Share2
+  Share2,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 type CameraMode = 'photo' | 'video';
@@ -32,6 +33,7 @@ function CameraPageInner() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<CameraMode>((searchParams?.get('mode') as CameraMode) || 'photo');
   const [isRecording, setIsRecording] = useState(false);
@@ -47,6 +49,7 @@ function CameraPageInner() {
   const [showGrid, setShowGrid] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [pickedMedia, setPickedMedia] = useState<string | null>(null);
 
   const filters = [
     { name: 'none', label: 'None', style: '' },
@@ -253,6 +256,34 @@ function CameraPageInner() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Save snapped photo to device storage
+  const saveToDevice = (dataUrl: string, filename = 'photo.jpg') => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // When a photo is captured, offer to save to device
+  useEffect(() => {
+    if (capturedMedia && mediaType === 'photo') {
+      // Optionally, auto-save or show a button to save
+      // saveToDevice(capturedMedia);
+    }
+  }, [capturedMedia, mediaType]);
+
+  // Handle picking from gallery
+  const handlePickFromGallery = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPickedMedia(url);
+    setCapturedMedia(url);
+    setMediaType(file.type.startsWith('video') ? 'video' : 'photo');
   };
 
   if (capturedMedia) {
@@ -504,8 +535,19 @@ function CameraPageInner() {
 
       {/* Bottom Controls */}
       <div className="absolute bottom-8 left-4 right-4 z-20 flex items-center justify-between">
-        <button className="p-4 rounded-full bg-black/50 backdrop-blur-sm">
-          <Smile className="w-6 h-6" />
+        <button
+          className="p-4 rounded-full bg-black/50 backdrop-blur-sm"
+          onClick={() => fileInputRef.current?.click()}
+          title="Pick from Gallery"
+        >
+          <ImageIcon className="w-6 h-6" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={handlePickFromGallery}
+          />
         </button>
 
         {/* Capture Button */}
@@ -526,6 +568,16 @@ function CameraPageInner() {
             <Circle className="w-16 h-16 text-black" />
           )}
         </motion.button>
+
+        {mediaType === 'photo' && capturedMedia && (
+          <button
+            className="p-4 rounded-full bg-black/50 backdrop-blur-sm ml-2"
+            onClick={() => saveToDevice(capturedMedia)}
+            title="Save to Device"
+          >
+            <Download className="w-6 h-6" />
+          </button>
+        )}
 
         <button className="p-4 rounded-full bg-black/50 backdrop-blur-sm">
           <Music className="w-6 h-6" />

@@ -68,17 +68,17 @@ export default function ReelsPage() {
   }, []);
 
   useEffect(() => {
-    fetchPosts();
+    fetchReels();
     fetchStatusUsers();
   }, []);
 
-  const fetchPosts = async () => {
+  const fetchReels = async () => {
     try {
-      const response = await fetch('/api/posts');
+      const response = await fetch('/api/reels');
       const data = await response.json();
-      setPosts(data.posts);
+      setPosts(data.reels);
     } catch (error) {
-      console.error('Error fetching posts:', error);
+      console.error('Error fetching reels:', error);
     } finally {
       setLoading(false);
     }
@@ -86,26 +86,21 @@ export default function ReelsPage() {
 
   const fetchStatusUsers = async () => {
     try {
-      // Fetch all users and their status info
-      const response = await fetch('/api/status-users');
+      // Fetch statuses (stories) from contacts only
+      const response = await fetch('/api/reels/status');
       const data = await response.json();
-      // Defensive: ensure data.statusUsers is an array and map to expected shape
-      if (Array.isArray(data.statusUsers)) {
-        setStatusUsers(
-          data.statusUsers.map((user: any) => ({
-            id: user.id,
-            name: user.name,
-            image: user.image,
-            hasPostedToday: !!user.hasPostedToday,
-            isCurrentUser: !!user.isCurrentUser,
-            lastPosted: user.lastPosted ? new Date(user.lastPosted) : undefined,
-          }))
-        );
-      } else {
-        setStatusUsers([]);
-      }
+      // Map to StatusUser shape as before
+      setStatusUsers(
+        (data.statuses || []).map((status: any) => ({
+          id: status.user.id,
+          name: status.user.name,
+          image: status.user.profileImage,
+          hasPostedToday: true,
+          isCurrentUser: false, // Set true if matches session user
+          lastPosted: status.createdAt ? new Date(status.createdAt) : undefined,
+        }))
+      );
     } catch (error) {
-      console.error('Error fetching status users:', error);
       setStatusUsers([]);
     }
   };
