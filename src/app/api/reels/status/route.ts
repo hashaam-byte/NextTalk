@@ -10,38 +10,57 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function GET() {
-  // Fetch statuses (stories) from contacts only
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get('userId');
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ statuses: [] }, { status: 401 });
+    if (userId) {
+      // Fetch all statuses for a user, including analytics
+      const posts = await prisma.post.findMany({
+        where: {
+          userId,
+          visibility: 'CONTACTS',
+          expiresAt: { gt: new Date() }
+        },
+        include: {
+          likes: true,
+          comments: true,
+          user: { select: { id: true, name: true, profileImage: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      return NextResponse.json({ posts });
+    } else {
+      // Fetch statuses (stories) from contacts only
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.email) {
+        return NextResponse.json({ statuses: [] }, { status: 401 });
+      }
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        include: { contacts: true },
+      });
+      if (!user) return NextResponse.json({ statuses: [] }, { status: 404 });
+
+      const contactIds = user.contacts.map(c => c.id);
+
+      const statuses = await prisma.post.findMany({
+        where: {
+          visibility: 'CONTACTS',
+          userId: { in: contactIds },
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, profileImage: true } },
+          likes: true,
+          comments: true,
+        },
+      });
+      return NextResponse.json({ statuses });
     }
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { contacts: true },
-    });
-    if (!user) return NextResponse.json({ statuses: [] }, { status: 404 });
-
-    const contactIds = user.contacts.map(c => c.id);
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const statuses = await prisma.post.findMany({
-      where: {
-        visibility: 'CONTACTS',
-        userId: { in: contactIds },
-        createdAt: { gte: since },
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: { select: { id: true, name: true, profileImage: true } },
-        likes: true,
-        comments: true,
-      },
-    });
-    return NextResponse.json({ statuses });
   } catch (error) {
-    return NextResponse.json({ statuses: [] }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch statuses' }, { status: 500 });
   }
 }
 
@@ -91,6 +110,11 @@ export async function POST(req: Request) {
         textStyle: textStyle || undefined,
         expiresAt,
       },
+      include: {
+        likes: true,
+        comments: true,
+        user: { select: { id: true, name: true, profileImage: true } }
+      }
     });
 
     // Emit real-time event if needed (if using socket.io on server)

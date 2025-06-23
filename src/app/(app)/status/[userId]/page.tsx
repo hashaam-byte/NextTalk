@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Heart, MessageCircle, Share2, Eye, MoreHorizontal, Trash2, Download } from 'lucide-react';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 
 interface StatusPost {
   id: string;
@@ -45,6 +46,8 @@ export default function StatusPage() {
   const params = useParams();
   const userId = params?.userId as string;
   
+  const { data: session } = useSession();
+  
   const [user, setUser] = useState<StatusUser | null>(null);
   const [statusPosts, setStatusPosts] = useState<StatusPost[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -76,10 +79,22 @@ export default function StatusPage() {
 
   const fetchUserStatus = async () => {
     try {
-      const response = await fetch(`/api/status/${userId}`);
+      // Fetch statuses using the correct analytics endpoint
+      const response = await fetch(`/api/reels/status?userId=${userId}`);
       const data = await response.json();
-      setUser(data.user ?? null);
-      setStatusPosts(Array.isArray(data.statusPosts) ? data.statusPosts : []);
+      // Assume data.posts is the array of status posts
+      setStatusPosts(Array.isArray(data.posts) ? data.posts : []);
+      // Optionally fetch user info separately if needed
+      if (data.posts && data.posts.length > 0) {
+        setUser({
+          id: data.posts[0].user.id,
+          name: data.posts[0].user.name,
+          image: data.posts[0].user.profileImage,
+          isCurrentUser: session?.user?.id === data.posts[0].user.id,
+        });
+      } else {
+        setUser(null);
+      }
     } catch (error) {
       console.error('Error fetching status:', error);
       setUser(null);
@@ -121,6 +136,9 @@ export default function StatusPage() {
     console.log('Download status:', postId);
     setShowOptions(false);
   };
+
+  // Determine if current user is the owner
+  const isOwner = session?.user?.id === userId;
 
   if (loading) {
     return (
@@ -271,6 +289,23 @@ export default function StatusPage() {
           </button>
         </div>
 
+        {isOwner && (
+          <div className="flex items-center space-x-4">
+            <span className="flex items-center space-x-1">
+              <Heart className="w-4 h-4" />
+              <span className="text-xs">{currentPost.likes}</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <MessageCircle className="w-4 h-4" />
+              <span className="text-xs">{currentPost.comments?.length ?? 0}</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <Eye className="w-4 h-4" />
+              <span className="text-xs">{currentPost.viewedBy?.length ?? 0}</span>
+            </span>
+          </div>
+        )}
+
         {user.isCurrentUser && (
           <button
             onClick={() => setShowViewers(true)}
@@ -281,6 +316,25 @@ export default function StatusPage() {
           </button>
         )}
       </div>
+
+      {/* Owner: Show all statuses */}
+      {isOwner && (
+        <div className="absolute top-24 right-4 z-30 bg-black/80 rounded-xl p-4 max-w-xs">
+          <h4 className="font-bold mb-2">Your Statuses</h4>
+          <ul>
+            {statusPosts.map((post, idx) => (
+              <li key={post.id} className="mb-2">
+                <button
+                  className={`text-left w-full ${idx === currentIndex ? 'font-bold text-purple-400' : ''}`}
+                  onClick={() => setCurrentIndex(idx)}
+                >
+                  {post.mediaType} - {new Date(post.createdAt).toLocaleString()}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Viewers Modal */}
       <AnimatePresence>
