@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Plus, User, Heart, MessageCircle, Share2, Camera, Music, Mic, MapPin, Type, Video } from 'lucide-react';
 import Image from 'next/image';
+import io from 'socket.io-client';
 
 interface Post {
   id: string;
@@ -44,6 +45,7 @@ export default function ReelsPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [showPostOptions, setShowPostOptions] = useState(false);
   const router = useRouter();
+  const socketRef = useRef<any>(null);
 
   const postOptions: PostOption[] = [
     { icon: Camera, label: 'Photo', action: 'photo', gradient: 'from-blue-500 to-purple-500' },
@@ -70,6 +72,30 @@ export default function ReelsPage() {
   useEffect(() => {
     fetchPosts();
     fetchStatusUsers();
+  }, []);
+
+  useEffect(() => {
+    // Setup socket connection for real-time updates
+    if (!socketRef.current) {
+      socketRef.current = io({
+        path: '/api/socket/io',
+        transports: ['websocket'],
+      });
+    }
+    const socket = socketRef.current;
+
+    socket.on('new:post', (post: any) => {
+      setPosts(prev => [post, ...prev]);
+    });
+
+    socket.on('new:status', () => {
+      fetchStatusUsers();
+    });
+
+    return () => {
+      socket.off('new:post');
+      socket.off('new:status');
+    };
   }, []);
 
   const fetchPosts = async () => {

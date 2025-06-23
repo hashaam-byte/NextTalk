@@ -19,6 +19,7 @@ import {
   Rewind
 } from 'lucide-react';
 import Image from 'next/image';
+import io from 'socket.io-client';
 
 interface MusicTrack {
   id: string;
@@ -41,6 +42,7 @@ export default function MusicCreationPage() {
   const router = useRouter();
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const socketRef = useRef<any>(null);
   
   const [selectedTrack, setSelectedTrack] = useState<MusicTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -142,6 +144,12 @@ export default function MusicCreationPage() {
     };
   }, [selectedTrack]);
 
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io({ path: '/api/socket/io', transports: ['websocket'] });
+    }
+  }, []);
+
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio || !selectedTrack) return;
@@ -214,6 +222,17 @@ export default function MusicCreationPage() {
     if (!selectedTrack) return;
 
     try {
+      const formData = new FormData();
+      if (uploadedFile) {
+        formData.append('media', uploadedFile, uploadedFile.name);
+        formData.append('mediaType', 'AUDIO');
+      } else {
+        // If using a sample/URL, you may want to handle differently
+        formData.append('mediaUrl', selectedTrack.audioUrl);
+        formData.append('mediaType', 'AUDIO');
+      }
+      formData.append('caption', caption);
+
       // Here you would upload the music post
       const postData = {
         type: 'MUSIC',
@@ -224,6 +243,15 @@ export default function MusicCreationPage() {
 
       console.log('Posting music status:', postData);
       
+      await fetch('/api/reels/status', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (socketRef.current) {
+        socketRef.current.emit('new:status');
+      }
+
       // Always redirect to reels page after posting
       router.push('/reels');
     } catch (error) {

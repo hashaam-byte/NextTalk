@@ -16,6 +16,7 @@ import {
   Upload,
   Waveform
 } from 'lucide-react';
+import io from 'socket.io-client';
 
 interface AudioRecording {
   id: string;
@@ -34,6 +35,7 @@ export default function AudioCreationPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const socketRef = useRef<any>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -73,6 +75,12 @@ export default function AudioCreationPage() {
       if (interval) clearInterval(interval);
     };
   }, [isRecording, isPaused]);
+
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io({ path: '/api/socket/io', transports: ['websocket'] });
+    }
+  }, []);
 
   const requestMicrophonePermission = async () => {
     try {
@@ -254,9 +262,9 @@ export default function AudioCreationPage() {
 
     try {
       const formData = new FormData();
-      formData.append('audio', currentRecording.blob, `audio-${currentRecording.id}.webm`);
+      formData.append('media', currentRecording.blob, `audio-${currentRecording.id}.webm`);
       formData.append('caption', caption);
-      formData.append('type', 'AUDIO');
+      formData.append('mediaType', 'AUDIO');
       formData.append('duration', currentRecording.duration.toString());
 
       console.log('Posting audio status:', {
@@ -264,6 +272,15 @@ export default function AudioCreationPage() {
         caption,
         type: 'AUDIO'
       });
+
+      await fetch('/api/reels/status', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (socketRef.current) {
+        socketRef.current.emit('new:status');
+      }
 
       // Always redirect to reels page after posting
       router.push('/reels');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Sparkles
 } from 'lucide-react';
+import io from 'socket.io-client';
 
 interface TextStyle {
   fontSize: number;
@@ -33,6 +34,7 @@ interface TextStyle {
 export default function TextCreationPage() {
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const socketRef = useRef<any>(null);
   
   const [text, setText] = useState('');
   const [textStyle, setTextStyle] = useState<TextStyle>({
@@ -84,19 +86,30 @@ export default function TextCreationPage() {
     setTextStyle(prev => ({ ...prev, ...updates }));
   };
 
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io({ path: '/api/socket/io', transports: ['websocket'] });
+    }
+  }, []);
+
   const handlePost = async () => {
     if (!text.trim()) return;
 
     try {
-      const postData = {
-        type: 'TEXT',
-        textContent: text,
-        textStyle: textStyle,
-      };
+      const formData = new FormData();
+      formData.append('mediaType', 'TEXT');
+      formData.append('textContent', text);
+      formData.append('textStyle', JSON.stringify(textStyle));
 
-      console.log('Posting text status:', postData);
-      
-      // Always redirect to reels page after posting
+      await fetch('/api/reels/status', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (socketRef.current) {
+        socketRef.current.emit('new:status');
+      }
+
       router.push('/reels');
     } catch (error) {
       console.error('Error posting text status:', error);

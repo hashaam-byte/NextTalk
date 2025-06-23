@@ -19,8 +19,10 @@ import {
   Timer,
   Grid3X3,
   Download,
-  Share2
+  Share2,
+  Image as ImageIcon,
 } from 'lucide-react';
+import io from 'socket.io-client';
 
 type CameraMode = 'photo' | 'video';
 type FlashMode = 'off' | 'on' | 'auto';
@@ -32,6 +34,8 @@ function CameraPageInner() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const socketRef = useRef<any>(null);
 
   const [mode, setMode] = useState<CameraMode>((searchParams?.get('mode') as CameraMode) || 'photo');
   const [isRecording, setIsRecording] = useState(false);
@@ -47,6 +51,7 @@ function CameraPageInner() {
   const [showGrid, setShowGrid] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [pickedMedia, setPickedMedia] = useState<string | null>(null);
 
   const filters = [
     { name: 'none', label: 'None', style: '' },
@@ -73,6 +78,12 @@ function CameraPageInner() {
     }
     return () => clearInterval(interval);
   }, [isRecording]);
+
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io({ path: '/api/socket/io', transports: ['websocket'] });
+    }
+  }, []);
 
   const startCamera = async () => {
     try {
@@ -222,27 +233,29 @@ function CameraPageInner() {
     if (!capturedMedia) return;
 
     try {
-      // Here you would upload the media
       const formData = new FormData();
-      
       if (mediaType === 'photo') {
-        // Convert data URL to blob
         const response = await fetch(capturedMedia);
         const blob = await response.blob();
         formData.append('media', blob, 'photo.jpg');
+        formData.append('mediaType', 'IMAGE');
       } else if (mediaType === 'video') {
-        // Handle video blob
         const response = await fetch(capturedMedia);
         const blob = await response.blob();
         formData.append('media', blob, 'video.webm');
+        formData.append('mediaType', 'VIDEO');
+      }
+      formData.append('caption', '');
+
+      await fetch('/api/reels/status', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (socketRef.current) {
+        socketRef.current.emit('new:status');
       }
 
-      formData.append('type', mediaType || '');
-      formData.append('filter', selectedFilter);
-
-      console.log('Posting media...');
-      
-      // Always redirect to reels page after posting
       router.push('/reels');
     } catch (error) {
       console.error('Error posting media:', error);
@@ -253,6 +266,26 @@ function CameraPageInner() {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Save snapped photo to device storage
+  const saveToDevice = (dataUrl: string, filename = 'photo.jpg') => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Handle picking from gallery
+  const handlePickFromGallery = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPickedMedia(url);
+    setCapturedMedia(url);
+    setMediaType(file.type.startsWith('video') ? 'video' : 'photo');
   };
 
   if (capturedMedia) {
@@ -504,8 +537,19 @@ function CameraPageInner() {
 
       {/* Bottom Controls */}
       <div className="absolute bottom-8 left-4 right-4 z-20 flex items-center justify-between">
-        <button className="p-4 rounded-full bg-black/50 backdrop-blur-sm">
-          <Smile className="w-6 h-6" />
+        <button
+          className="p-4 rounded-full bg-black/50 backdrop-blur-sm"
+          onClick={() => fileInputRef.current?.click()}
+          title="Pick from Gallery"
+        >
+          <ImageIcon className="w-6 h-6" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={handlePickFromGallery}
+          />
         </button>
 
         {/* Capture Button */}
@@ -526,6 +570,16 @@ function CameraPageInner() {
             <Circle className="w-16 h-16 text-black" />
           )}
         </motion.button>
+
+        {mediaType === 'photo' && capturedMedia && (
+          <button
+            className="p-4 rounded-full bg-black/50 backdrop-blur-sm ml-2"
+            onClick={() => saveToDevice(capturedMedia)}
+            title="Save to Device"
+          >
+            <Download className="w-6 h-6" />
+          </button>
+        )}
 
         <button className="p-4 rounded-full bg-black/50 backdrop-blur-sm">
           <Music className="w-6 h-6" />

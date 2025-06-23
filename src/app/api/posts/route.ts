@@ -12,6 +12,7 @@ cloudinary.config({
 });
 
 export async function POST(req: Request) {
+  // Handles creating a new post (image/video)
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -36,17 +37,18 @@ export async function POST(req: Request) {
     // Upload to Cloudinary
     const uploadResponse = await cloudinary.uploader.upload(fileBase64, {
       folder: 'nexttalk_posts',
+      resource_type: file.type.startsWith('video/') ? 'video' : 'image',
     });
 
     // Create post with Cloudinary URL
     const post = await prisma.post.create({
       data: {
         mediaUrl: uploadResponse.secure_url,
-        caption: caption || null,
+        content: caption || '',
         mediaType: file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE',
-        visibility: visibility || 'public',
+        visibility: (visibility?.toUpperCase() as any) || 'PUBLIC',
         viewersIds: viewersIds ? JSON.parse(viewersIds) : [],
-        userId: session.user.id
+        user: { connect: { id: session.user.id } }
       },
       include: {
         user: {
@@ -56,6 +58,8 @@ export async function POST(req: Request) {
             profileImage: true,
           },
         },
+        likes: true,
+        comments: true,
       },
     });
 
@@ -72,6 +76,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  // Fetch posts visible to the user (public, contacts, private)
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -106,11 +111,27 @@ export async function GET(req: Request) {
           select: {
             id: true,
             name: true,
-            profileImage: true,  // Changed from image to profileImage
+            profileImage: true,
+          }
+        },
+        likes: {
+          select: {
+            id: true,
+            userId: true,
+            user: { select: { id: true, name: true, profileImage: true } }
+          }
+        },
+        comments: {
+          select: {
+            id: true,
+            content: true,
+            userId: true,
+            createdAt: true,
+            user: { select: { id: true, name: true, profileImage: true } }
           }
         },
         _count: {
-          select: { likes: true }
+          select: { likes: true, comments: true }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -119,6 +140,75 @@ export async function GET(req: Request) {
     return NextResponse.json({ posts });
   } catch (error) {
     console.error('[POSTS_GET]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+  }
+}
+
+// --- Likes endpoint ---
+export async function PUT(req: Request) {
+  // Handles like/unlike
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const { postId, action } = await req.json();
+    if (!postId || !['like', 'unlike'].includes(action)) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    if (action === 'like') {
+      await prisma.like.upsert({
+        where: { userId_postId: { userId: user.id, postId } },
+        update: {},
+        create: { userId: user.id, postId }
+      });
+    } else {
+      await prisma.like.deleteMany({
+        where: { userId: user.id, postId }
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[POSTS_LIKE]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+  }
+}
+
+// --- Comments endpoint ---
+export async function PATCH(req: Request) {
+  // Handles adding a comment
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const { postId, content } = await req.json();
+    if (!postId || !content) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    const comment = await prisma.comment.create({
+      data: {
+        postId,
+        userId: user.id,
+        content,
+      },
+      include: {
+        user: { select: { id: true, name: true, profileImage: true } }
+      }
+    });
+
+    return NextResponse.json({ comment });
+  } catch (error) {
+    console.error('[POSTS_COMMENT]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
