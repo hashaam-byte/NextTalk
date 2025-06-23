@@ -350,6 +350,7 @@ model Post {
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes       Like[]
   comments    Comment[]
+  expiresAt   DateTime?   // Add this line for status expiry
 
   @@index([userId])
   @@index([visibility])

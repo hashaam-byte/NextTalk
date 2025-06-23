@@ -115,17 +115,19 @@ export default function ReelsPage() {
       // Fetch all users and their status info
       const response = await fetch('/api/status-users');
       const data = await response.json();
-      // Defensive: ensure data.statusUsers is an array and map to expected shape
+      // Only show statuses that are not expired
       if (Array.isArray(data.statusUsers)) {
         setStatusUsers(
-          data.statusUsers.map((user: any) => ({
-            id: user.id,
-            name: user.name,
-            image: user.image,
-            hasPostedToday: !!user.hasPostedToday,
-            isCurrentUser: !!user.isCurrentUser,
-            lastPosted: user.lastPosted ? new Date(user.lastPosted) : undefined,
-          }))
+          data.statusUsers
+            .filter((user: any) => !user.expiresAt || new Date(user.expiresAt) > new Date())
+            .map((user: any) => ({
+              id: user.id,
+              name: user.name,
+              image: user.image,
+              hasPostedToday: !!user.hasPostedToday,
+              isCurrentUser: !!user.isCurrentUser,
+              lastPosted: user.lastPosted ? new Date(user.lastPosted) : undefined,
+            }))
         );
       } else {
         setStatusUsers([]);
