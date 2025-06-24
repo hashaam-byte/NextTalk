@@ -396,6 +396,7 @@ model Comment {
   post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
   topicPost   TopicPost? @relation("PostComments", fields: [topicPostId], references: [id])
   topicPostId String?
+  type        String?    // 'text', 'emoji', 'sticker'
 
   @@index([userId])
   @@index([postId])

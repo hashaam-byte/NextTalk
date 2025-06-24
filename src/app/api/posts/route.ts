@@ -83,6 +83,47 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const url = new URL(req.url);
+    const userId = url.searchParams.get('userId');
+    const mine = url.searchParams.get('mine');
+
+    if (mine === '1' && userId) {
+      // Fetch only posts created by this user
+      const posts = await prisma.post.findMany({
+        where: { userId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              profileImage: true,
+            }
+          },
+          likes: {
+            select: {
+              id: true,
+              userId: true,
+              user: { select: { id: true, name: true, profileImage: true } }
+            }
+          },
+          comments: {
+            select: {
+              id: true,
+              content: true,
+              userId: true,
+              createdAt: true,
+              user: { select: { id: true, name: true, profileImage: true } }
+            }
+          },
+          _count: {
+            select: { likes: true, comments: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      return NextResponse.json({ posts });
+    }
+
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true, contacts: { select: { id: true } } }

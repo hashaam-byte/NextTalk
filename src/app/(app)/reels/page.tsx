@@ -139,8 +139,9 @@ export default function ReelsPage() {
   };
 
   const handleStatusClick = (user: StatusUser) => {
-    if (user.isCurrentUser && !user.hasPostedToday) {
-      setShowPostOptions(true);
+    if (user.isCurrentUser) {
+      // Go to my posts analytics page
+      router.push('/profile/my-posts');
     } else {
       // Navigate to status view page
       router.push(`/status/${user.id}`);
