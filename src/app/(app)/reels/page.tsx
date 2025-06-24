@@ -17,8 +17,8 @@ interface Post {
     name: string;
     image: string;
   };
-  likes: number;
-  viewedBy: string[];
+  likes: number | { id: string; userId: string; user: any }[] | any;
+  viewedBy: string[] | any[];
   createdAt: Date;
 }
 
@@ -179,6 +179,14 @@ export default function ReelsPage() {
     router.push('/camera');
   };
 
+  // Defensive: normalize likes to a number for rendering
+  const getLikesCount = (likes: any) => {
+    if (typeof likes === 'number') return likes;
+    if (Array.isArray(likes)) return likes.length;
+    if (typeof likes === 'object' && likes !== null && '_count' in likes) return likes._count;
+    return 0;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black">
       {/* Mobile-optimized header */}
@@ -320,7 +328,7 @@ export default function ReelsPage() {
                   <div className="flex items-center mt-2 space-x-4">
                     <button className="flex items-center space-x-1">
                       <Heart className="w-4 h-4" />
-                      <span className="text-xs">{post.likes}</span>
+                      <span className="text-xs">{getLikesCount(post.likes)}</span>
                     </button>
                     <button className="flex items-center space-x-1">
                       <MessageCircle className="w-4 h-4" />
