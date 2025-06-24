@@ -202,6 +202,8 @@ enum MediaType {
   VIDEO
   AUDIO
   DOCUMENT
+  TEXT
+  LOCATION
 }
 
 enum CallStatus {
@@ -350,7 +352,19 @@ model Post {
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes       Like[]
   comments    Comment[]
-  expiresAt   DateTime?   // Add this line for status expiry
+  expiresAt   DateTime?
+  // --- New fields for status types and analytics ---
+  mediaType        MediaType? @default(IMAGE)
+  textContent      String?
+  textStyle        Json?
+  backgroundColor  String?
+  locationName     String?
+  locationLat      Float?
+  locationLng      Float?
+  viewedBy         Json?      // Array of {id, name, image, viewedAt}
+  likesCount       Int        @default(0)
+  commentsCount    Int        @default(0)
+  // --------------------------------------------------
 
   @@index([userId])
   @@index([visibility])

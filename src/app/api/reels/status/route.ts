@@ -71,10 +71,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const data = await req.formData();
-    const mediaType = data.get('mediaType') as string;
-    const caption = data.get('caption') as string;
-    const textContent = data.get('textContent') as string;
-    const textStyle = data.get('textStyle') as string;
+    const mediaType = data.get('mediaType') as string | undefined;
+    const caption = data.get('caption') as string | undefined;
+    const textContent = data.get('textContent') as string | undefined;
+    const textStyle = data.get('textStyle') as string | undefined;
+    const backgroundColor = data.get('backgroundColor') as string | undefined;
+    const locationName = data.get('locationName') as string | undefined;
+    const locationLat = data.get('locationLat') ? parseFloat(data.get('locationLat') as string) : undefined;
+    const locationLng = data.get('locationLng') ? parseFloat(data.get('locationLng') as string) : undefined;
     let mediaUrl: string | null = null;
 
     // Handle media upload if present
@@ -103,11 +107,15 @@ export async function POST(req: Request) {
       data: {
         mediaUrl,
         content: caption || '',
-        mediaType: mediaType?.toUpperCase() || 'IMAGE',
+        mediaType: mediaType?.toUpperCase(),
+        textContent,
+        textStyle: textStyle ? JSON.parse(textStyle) : undefined,
+        backgroundColor,
+        locationName,
+        locationLat,
+        locationLng,
         visibility: 'CONTACTS',
         userId: user.id,
-        textContent: textContent || undefined,
-        textStyle: textStyle || undefined,
         expiresAt,
       },
       include: {
