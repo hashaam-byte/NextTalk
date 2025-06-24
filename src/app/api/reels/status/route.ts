@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const userId = searchParams.get('userId');
   try {
     if (userId) {
-      // Fetch all statuses for a user, including analytics
+      // Fetch all statuses for a user, including analytics and viewers
       const posts = await prisma.post.findMany({
         where: {
           userId,
@@ -24,12 +24,38 @@ export async function GET(req: Request) {
         },
         include: {
           likes: true,
-          comments: true,
+          comments: {
+            include: {
+              user: { select: { id: true, name: true, profileImage: true } }
+            }
+          },
           user: { select: { id: true, name: true, profileImage: true } }
         },
         orderBy: { createdAt: 'desc' }
       });
-      return NextResponse.json({ posts });
+
+      // For each post, fetch viewers (exclude the owner)
+      const postsWithViewers = await Promise.all(posts.map(async post => {
+        // If you store viewers in a Json field (viewedBy), parse and filter
+        let viewers: any[] = [];
+        if (post.viewedBy && Array.isArray(post.viewedBy)) {
+          viewers = post.viewedBy.filter((v: any) => v.id !== post.userId);
+        }
+        // If you use a viewersIds array, fetch user info
+        // let viewers = [];
+        // if (post.viewersIds && post.viewersIds.length > 0) {
+        //   viewers = await prisma.user.findMany({
+        //     where: { id: { in: post.viewersIds.filter(id => id !== post.userId) } },
+        //     select: { id: true, name: true, profileImage: true }
+        //   });
+        // }
+        return {
+          ...post,
+          viewedBy: viewers
+        };
+      }));
+
+      return NextResponse.json({ posts: postsWithViewers });
     } else {
       // Fetch statuses (stories) from contacts only
       const session = await getServerSession(authOptions);

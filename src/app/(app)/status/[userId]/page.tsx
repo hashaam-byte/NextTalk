@@ -559,6 +559,9 @@ export default function StatusPage() {
     );
   }
 
+  // Defensive: always use currentPost.viewedBy.length for viewers count
+  const viewersCount = currentPost.viewedBy?.length ?? 0;
+
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Progress bars */}
@@ -623,7 +626,7 @@ export default function StatusPage() {
               className="flex items-center space-x-1 p-2 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 transition-colors"
             >
               <Eye className="w-4 h-4" />
-              <span className="text-xs">{currentPost.viewedBy?.length || 0}</span>
+              <span className="text-xs">{viewersCount}</span>
             </button>
           )}
 
@@ -892,7 +895,7 @@ export default function StatusPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">
-                  Viewed by {currentPost.viewedBy?.length || 0}
+                  Viewed by {viewersCount}
                 </h3>
                 <button
                   onClick={() => setShowViewers(false)}
@@ -934,7 +937,7 @@ export default function StatusPage() {
                   </div>
                 ))}
                 
-                {(!currentPost.viewedBy || currentPost.viewedBy.length === 0) && (
+                {viewersCount === 0 && (
                   <div className="text-center py-8">
                     <Eye className="w-12 h-12 text-gray-600 mx-auto mb-2" />
                     <p className="text-gray-400">No views yet</p>
