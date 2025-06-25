@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -15,6 +15,7 @@ import { useSession } from 'next-auth/react';
 import LoadingPage from '@/components/chat/LoadingPage';
 import ImageViewer from '@/components/ImageViewer';
 import { useBlurOverlay } from '../layout';
+import io from 'socket.io-client';
 
 // Enhanced Chat type definition
 interface Chat {
@@ -122,6 +123,9 @@ export default function ChatListPage() {
   const [selectedProfileImage, setSelectedProfileImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showBlur, setShowBlur] = useState(false); // Blur overlay state for dropdown
+  const socketRef = useRef<any>(null);
+  const [typingChats, setTypingChats] = useState<{ [chatId: string]: string }>({});
+
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { setBlur } = useBlurOverlay();
@@ -238,6 +242,32 @@ export default function ChatListPage() {
     setShowBlur(isMenuOpen);
     return () => setShowBlur(false);
   }, [isMenuOpen]);
+
+  // Setup socket connection for typing notifications
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io({ path: '/api/socket/io', transports: ['websocket'] });
+    }
+    const socket = socketRef.current;
+
+    socket.on('chat:typing', (data: { chatId: string; userId: string; name: string; typing: boolean }) => {
+      if (data.userId !== session?.user?.id) {
+        setTypingChats(prev => {
+          if (data.typing) {
+            return { ...prev, [data.chatId]: data.name };
+          } else {
+            const updated = { ...prev };
+            delete updated[data.chatId];
+            return updated;
+          }
+        });
+      }
+    });
+
+    return () => {
+      socket.off('chat:typing');
+    };
+  }, [session?.user?.id]);
 
   const handleChatSelect = (chatId: string) => {
     if (isSelectionMode) {
@@ -807,6 +837,13 @@ export default function ChatListPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Typing indicator */}
+                  {typingChats[chat.id] && (
+                    <div className="text-xs text-purple-400 animate-pulse">
+                      {typingChats[chat.id]} is typing...
+                    </div>
+                  )}
 
                   {/* Context Menu Trigger */}
                   <button

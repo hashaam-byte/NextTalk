@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Image from 'next/image';
@@ -84,6 +84,8 @@ export default function ChatPage() {
   const [message, setMessage] = useState('');
   const [chatInfo, setChatInfo] = useState<ChatInfo | null>(null);
   const [isUserTyping, setIsUserTyping] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [otherTypingUser, setOtherTypingUser] = useState<{ id: string; name: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
