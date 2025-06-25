@@ -139,11 +139,14 @@ export default function ReelsPage() {
   };
 
   const handleStatusClick = (user: StatusUser) => {
-    if (user.isCurrentUser) {
-      // Go to my posts analytics page
+    if (user.isCurrentUser && !user.hasPostedToday) {
+      // Show post options modal if current user hasn't posted today
+      setShowPostOptions(true);
+    } else if (user.isCurrentUser && user.hasPostedToday) {
+      // Go to my posts analytics page if current user has posted
       router.push('/profile/my-posts');
     } else {
-      // Navigate to status view page
+      // Navigate to status view page for other users
       router.push(`/status/${user.id}`);
     }
   };
