@@ -79,6 +79,14 @@ interface StatusUser {
 const STORY_DURATION = 5000; // 5 seconds per story
 const PROGRESS_INTERVAL = 50; // Update progress every 50ms
 
+// Helper to normalize likes/comments to a number
+const getCount = (val: any) => {
+  if (typeof val === 'number') return val;
+  if (Array.isArray(val)) return val.length;
+  if (typeof val === 'object' && val !== null && '_count' in val) return val._count;
+  return 0;
+};
+
 export default function StatusPage() {
   const router = useRouter();
   const params = useParams();
@@ -746,7 +754,7 @@ export default function StatusPage() {
               } ${isSubmitting ? 'opacity-50' : ''}`}
             >
               <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-              <span className="text-sm font-medium">{localLikes}</span>
+              <span className="text-sm font-medium">{getCount(localLikes)}</span>
             </button>
             
             <button
@@ -825,7 +833,7 @@ export default function StatusPage() {
       </motion.div>
 
       {/* Comments display for owner */}
-      {isOwner && currentPost.comments && currentPost.comments.length > 0 && (
+      {isOwner && currentPost.comments && getCount(currentPost.comments) > 0 && (
         <motion.div 
           className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/60 backdrop-blur-sm rounded-xl p-4 max-w-xs max-h-64 overflow-y-auto"
           initial={{ opacity: 0, x: -20 }}
@@ -833,7 +841,7 @@ export default function StatusPage() {
         >
           <h4 className="font-semibold mb-3 text-sm">Recent Reactions</h4>
           <div className="space-y-2">
-            {currentPost.comments.slice(-5).map((comment) => (
+            {(Array.isArray(currentPost.comments) ? currentPost.comments : []).slice(-5).map((comment) => (
               <div key={comment.id} className="flex items-center space-x-2">
                 <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-600 flex-shrink-0">
                   {comment.user?.profileImage ? (
