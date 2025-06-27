@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [blurProfile, setBlurProfile] = useState(false);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -110,6 +111,14 @@ export default function ProfilePage() {
       fetchData();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (userData.privacyLevel === 'private' && session?.user?.id !== userData.id) {
+      setBlurProfile(true);
+    } else {
+      setBlurProfile(false);
+    }
+  }, [userData, session]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

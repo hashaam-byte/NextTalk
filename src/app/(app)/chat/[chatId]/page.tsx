@@ -120,6 +120,11 @@ export default function ChatPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [unlockPin, setUnlockPin] = useState('');
+  const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [chatLocked, setChatLocked] = useState(false);
 
   const WALLPAPER_COLORS = [
     { 
@@ -1568,6 +1573,39 @@ export default function ChatPage() {
             />
           )}
         </AnimatePresence>
+
+        {/* Lock Screen */}
+        {isLocked && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
+            <div className="bg-gray-900 p-6 rounded-xl border border-white/10 shadow-lg text-center">
+              <h2 className="text-xl font-bold mb-4">Chat Locked</h2>
+              <p className="mb-4">{unlockError || 'This chat is locked. Only participants can view.'}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Unlock Prompt */}
+        {showUnlockPrompt && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
+            <div className="bg-gray-900 p-6 rounded-xl border border-white/10 shadow-lg text-center">
+              <h2 className="text-xl font-bold mb-4">Unlock Chat</h2>
+              <input
+                type="password"
+                value={unlockPin}
+                onChange={e => setUnlockPin(e.target.value)}
+                placeholder="Enter chat PIN"
+                className="mb-4 px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white"
+              />
+              <button
+                onClick={handleUnlock}
+                className="px-6 py-2 bg-purple-600 rounded-lg font-medium"
+              >
+                Unlock
+              </button>
+              {unlockError && <p className="text-red-400 mt-2">{unlockError}</p>}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

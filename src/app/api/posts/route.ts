@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/authConfig';
 import { v2 as cloudinary } from 'cloudinary';
+import { compare } from 'bcryptjs';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -250,6 +251,220 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ comment });
   } catch (error) {
     console.error('[POSTS_COMMENT]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+  }
+}
+
+// --- Post by ID endpoint ---
+export async function GET(req: Request) {
+  // Fetch a single post by ID
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const url = new URL(req.url);
+    const postId = url.searchParams.get('id');
+
+    if (!postId) {
+      return NextResponse.json({ error: 'Post ID is required' }, { status: 400 });
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            profileImage: true,
+          }
+        },
+        likes: {
+          select: {
+            id: true,
+            userId: true,
+            user: { select: { id: true, name: true, profileImage: true } }
+          }
+        },
+        comments: {
+          select: {
+            id: true,
+            content: true,
+            userId: true,
+            createdAt: true,
+            user: { select: { id: true, name: true, profileImage: true } }
+          }
+        },
+        _count: {
+          select: { likes: true, comments: true }
+        }
+      }
+    });
+
+    if (!post) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
+    // Check if the post is locked and requires a PIN
+    if (post.locked) {
+      const pin = req.headers.get('x-post-pin');
+      if (!pin || !post.postPin) {
+        return NextResponse.json({ error: 'Post locked. PIN required.' }, { status: 401 });
+      }
+      const isValid = await compare(pin, post.postPin);
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid PIN' }, { status: 403 });
+      }
+    }
+
+    return NextResponse.json({ post });
+  } catch (error) {
+    console.error('[POST_GET_BY_ID]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+  }
+}
+
+// --- Update post by ID endpoint ---
+export async function PATCH(req: Request) {
+  // Handles updating a post (caption, visibility, media)
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id, caption, visibility, media, viewersIds } = await req.json();
+
+    if (!id) {
+      return NextResponse.json({ error: 'Post ID is required' }, { status: 400 });
+    }
+
+    const post = await prisma.post.findUnique({ where: { id } });
+    if (!post) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
+    // Check if the post is locked and requires a PIN
+    if (post.locked) {
+      const pin = req.headers.get('x-post-pin');
+      if (!pin || !post.postPin) {
+        return NextResponse.json({ error: 'Post locked. PIN required.' }, { status: 401 });
+      }
+      const isValid = await compare(pin, post.postPin);
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid PIN' }, { status: 403 });
+      }
+    }
+
+    let mediaUrl = post.mediaUrl;
+    let mediaType = post.mediaType;
+
+    if (media) {
+      // If new media is provided, upload it to Cloudinary
+      const file = media as File;
+      // Convert file to base64
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const fileBase64 = `data:${file.type};base64,${buffer.toString('base64')}`;
+
+      // Upload to Cloudinary
+      const uploadResponse = await cloudinary.uploader.upload(fileBase64, {
+        folder: 'nexttalk_posts',
+        resource_type: file.type.startsWith('video/') ? 'video' : 'image',
+      });
+
+      mediaUrl = uploadResponse.secure_url;
+      mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+    }
+
+    // Update post in the database
+    const updatedPost = await prisma.post.update({
+      where: { id },
+      data: {
+        content: caption || '',
+        mediaUrl,
+        mediaType,
+        visibility: (visibility?.toUpperCase() as any) || 'PUBLIC',
+        viewersIds: viewersIds ? JSON.parse(viewersIds) : [],
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            profileImage: true,
+          }
+        },
+        likes: {
+          select: {
+            id: true,
+            userId: true,
+            user: { select: { id: true, name: true, profileImage: true } }
+          }
+        },
+        comments: {
+          select: {
+            id: true,
+            content: true,
+            userId: true,
+            createdAt: true,
+            user: { select: { id: true, name: true, profileImage: true } }
+          }
+        },
+        _count: {
+          select: { likes: true, comments: true }
+        }
+      }
+    });
+
+    return NextResponse.json({ post: updatedPost });
+  } catch (error) {
+    console.error('[POST_UPDATE]', error);
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+  }
+}
+
+// --- Delete post by ID endpoint ---
+export async function DELETE(req: Request) {
+  // Handles deleting a post
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const url = new URL(req.url);
+    const postId = url.searchParams.get('id');
+
+    if (!postId) {
+      return NextResponse.json({ error: 'Post ID is required' }, { status: 400 });
+    }
+
+    const post = await prisma.post.findUnique({ where: { id: postId } });
+    if (!post) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
+    // Check if the post is locked and requires a PIN
+    if (post.locked) {
+      const pin = req.headers.get('x-post-pin');
+      if (!pin || !post.postPin) {
+        return NextResponse.json({ error: 'Post locked. PIN required.' }, { status: 401 });
+      }
+      const isValid = await compare(pin, post.postPin);
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid PIN' }, { status: 403 });
+      }
+    }
+
+    // Delete post
+    await prisma.post.delete({ where: { id: postId } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[POST_DELETE]', error);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }

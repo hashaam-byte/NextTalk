@@ -54,6 +54,13 @@ model User {
   topicPosts            TopicPost[]
   selectedApps          String[]          @default([]) // Add this field for storing selected app IDs
   userApps              UserApp[]        // Add this line to create the opposite relation
+  aiSuggestions          AiSuggestion[]    // Add this line for the opposite relation
+  notificationPassword   String?          // Add this line
+  chatPassword           String?          // Add this line
+  privacySettingsPassword String?          // Add this line for privacy settings password
+  visibility             String            @default("public") // public | friends | private
+  profileLocked         Boolean           @default(false)    // Add for profile lock
+  profilePin            String?                     // Hashed PIN for profile lock
 }
 
 model Chat {
@@ -70,6 +77,10 @@ model Chat {
   participants Participant[]
 
   calls Call[]
+
+  locked       Boolean       @default(false) // Add this field for locked chats
+  lockPin      String?       // Add this field for chat PIN (hashed)
+  disappearing Boolean       @default(false) // Add this field for disappearing messages
 }
 
 model Message {
@@ -345,7 +356,7 @@ model Post {
   content     String
   mediaUrl    String?
   userId      String
-  visibility  Visibility @default(PUBLIC)
+  visibility  String   @default("public") // public | followers | private
   viewersIds  String[]   @default([])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -365,6 +376,8 @@ model Post {
   likesCount       Int        @default(0)
   commentsCount    Int        @default(0)
   // --------------------------------------------------
+  locked      Boolean  @default(false)    // Add for locked posts
+  postPin     String?                     // Hashed PIN for post lock
 
   @@index([userId])
   @@index([visibility])
@@ -441,4 +454,17 @@ model Location {
   isPopular   Boolean? @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AiSuggestion {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  priority    String?
+  action      String?
+  icon        String?
+  color       String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id]) // keep as is
 }

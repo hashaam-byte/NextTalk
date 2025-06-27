@@ -35,6 +35,10 @@ export default function MyPostsPage() {
   const [sortBy, setSortBy] = useState('newest');
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [deletePinPrompt, setDeletePinPrompt] = useState(false);
+  const [deletePin, setDeletePin] = useState('');
+  const [deletePinError, setDeletePinError] = useState('');
+  const [pendingDeletePostId, setPendingDeletePostId] = useState<string | null>(null);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -82,13 +86,21 @@ export default function MyPostsPage() {
   }, [posts, searchTerm, filterType, sortBy]);
 
   const handleDelete = async (postId: string) => {
-    if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) return;
-    
+    setPendingDeletePostId(postId);
+    setDeletePinPrompt(true);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
-      setPosts(posts => posts.filter(p => p.id !== postId));
+      const headers: any = {};
+      if (deletePin) headers['x-post-pin'] = deletePin;
+      await fetch(`/api/posts/${pendingDeletePostId}`, { method: 'DELETE', headers });
+      setPosts(posts => posts.filter(p => p.id !== pendingDeletePostId));
+      setDeletePinPrompt(false);
+      setDeletePin('');
+      setPendingDeletePostId(null);
     } catch (error) {
-      alert('Failed to delete post. Please try again.');
+      setDeletePinError('Failed to delete post. Wrong PIN?');
     }
   };
 
@@ -429,6 +441,29 @@ export default function MyPostsPage() {
                       >
                         Close
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Delete Post PIN Prompt */}
+                {deletePinPrompt && (
+                  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+                    <div className="bg-gray-900 p-8 rounded-xl shadow-lg text-center">
+                      <h2 className="text-xl font-bold mb-4">Delete Post</h2>
+                      <input
+                        type="password"
+                        value={deletePin}
+                        onChange={e => setDeletePin(e.target.value)}
+                        placeholder="Enter post PIN"
+                        className="mb-4 px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white"
+                      />
+                      <button
+                        onClick={confirmDelete}
+                        className="px-6 py-2 bg-red-600 rounded-lg font-medium"
+                      >
+                        Confirm Delete
+                      </button>
+                      {deletePinError && <p className="text-red-400 mt-2">{deletePinError}</p>}
                     </div>
                   </div>
                 )}

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/authConfig';
+import { compare } from 'bcryptjs';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -17,6 +18,17 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json({ notifications: [], error: "User not found" }, { status: 404 });
+    }
+
+    if (user.notificationPassword) {
+      const pin = req.headers.get('x-notification-pin');
+      if (!pin) {
+        return NextResponse.json({ notifications: [], error: "Notifications locked. PIN required." }, { status: 401 });
+      }
+      const isValid = await compare(pin, user.notificationPassword);
+      if (!isValid) {
+        return NextResponse.json({ notifications: [], error: "Invalid PIN" }, { status: 403 });
+      }
     }
 
     const notifications = await prisma.notification.findMany({
@@ -161,4 +173,26 @@ export async function POST(req: Request) {
     console.error('[NOTIFICATIONS_POST]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// --- AI Assistant Notification Helper (for real-time AI suggestions) ---
+export async function GET_AI_SUGGESTIONS(userId: string) {
+  // Example: Fetch AI suggestions for a user from the database
+  // You can adjust this logic as needed for your schema
+  try {
+    const suggestions = await prisma.aiSuggestion.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    });
+    return suggestions;
+  } catch (error) {
+    return [];
+  }
+}
+
+// --- Real-time AI suggestion event emitter (for use in POST if needed) ---
+export async function emitAISuggestion(userId: string) {
+  const suggestions = await GET_AI_SUGGESTIONS(userId);
+  global.io?.to(userId).emit('ai:suggestion', { suggestions });
 }

@@ -3,13 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  MessageSquare, Users, Video, Bell, 
-  ArrowRight, Calendar, Heart, Sparkles, 
-  Activity, BookOpen, UserPlus, Star, Camera, Cpu, Film, Gamepad, Tv, Trophy, Code
+import {
+  MessageSquare, Users, Video, Bell,
+  ArrowRight, Calendar, Heart, Sparkles,
+  Activity, BookOpen, UserPlus, Star, Camera,
+  Cpu, Film, Gamepad, Tv, Trophy, Code,
+  TrendingUp, Clock, Eye, Zap, Brain,
+  MapPin, Music, Sun, Moon, Coffee,
+  AlertCircle, CheckCircle, Timer,
+  Headphones, Mic, Play, Pause
 } from 'lucide-react';
-import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import io from 'socket.io-client';
+import { useRef } from 'react';
 import { TOPIC_CATEGORIES } from '@/config/topics';
 
 const DEFAULT_AVATAR = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="100%25" height="100%25" fill="%234B5563"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="14" fill="white" text-anchor="middle" dy=".3em"%3E?%3C/text%3E%3C/svg%3E';
@@ -55,6 +61,46 @@ export default function HomePage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [showAISuggestions, setShowAISuggestions] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTheme, setCurrentTheme] = useState('evening');
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [smartNotifications, setSmartNotifications] = useState<any[]>([]);
+
+  // --- THEMES ---
+  const themes = {
+    morning: {
+      name: 'Morning Fresh',
+      gradient: 'from-amber-900 via-orange-950 to-yellow-900',
+      accent: 'from-amber-500 to-orange-500',
+      icon: Sun
+    },
+    afternoon: {
+      name: 'Focus Mode',
+      gradient: 'from-blue-900 via-indigo-950 to-purple-900',
+      accent: 'from-blue-500 to-indigo-500',
+      icon: Coffee
+    },
+    evening: {
+      name: 'Night Vibes',
+      gradient: 'from-purple-900 via-gray-950 to-indigo-900',
+      accent: 'from-purple-500 to-indigo-500',
+      icon: Moon
+    }
+  };
+  const theme = themes[currentTheme];
+
+  // --- TIME & THEME ---
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+      const hour = new Date().getHours();
+      if (hour >= 6 && hour < 12) setCurrentTheme('morning');
+      else if (hour >= 12 && hour < 18) setCurrentTheme('afternoon');
+      else setCurrentTheme('evening');
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -78,12 +124,43 @@ export default function HomePage() {
       }
     };
 
+    const fetchAISuggestions = async () => {
+      try {
+        const res = await fetch('/api/ai-suggestions');
+        const data = await res.json();
+        setAiSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+      } catch (error) {
+        setAiSuggestions([]);
+      }
+    };
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        setSmartNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+      } catch (error) {
+        setSmartNotifications([]);
+      }
+    };
+
     if (session?.user) {
       fetchDashboardData();
+      fetchAISuggestions();
+      fetchNotifications();
       const interval = setInterval(fetchDashboardData, 30000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
   }, [session]);
+
+  // --- REALTIME AI/NOTIFICATIONS (optional, if you want to fetch from API) ---
+  useEffect(() => {
+    // Optionally fetch AI suggestions and notifications from your API
+    // setAiSuggestions(...);
+    // setSmartNotifications(...);
+  }, []);
+
+  // --- HELPERS ---
+  const formatTime = (date: Date) => date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   const formatTimestamp = (timestamp: Date | string | undefined) => {
     if (!timestamp) return 'Unknown time';
@@ -147,6 +224,162 @@ export default function HomePage() {
       default: return <Bell className="text-purple-400" size={16} />;
     }
   };
+
+  // --- DESIGN ADDITIONS ---
+  // Live Status Bar
+  const LiveStatusBar = () => (
+    <div className="flex items-center justify-between mb-6 p-4 bg-black/30 backdrop-blur-sm rounded-xl border border-white/10">
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <theme.icon size={16} className="text-amber-400" />
+          <span className="text-sm text-gray-300">{theme.name}</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-sm text-gray-300">Online</span>
+        </div>
+      </div>
+      <div className="flex items-center space-x-4">
+        <span className="text-sm text-gray-300">{formatTime(currentTime)}</span>
+        <div className="flex items-center space-x-2">
+          <Music size={14} className="text-purple-400" />
+          <span className="text-xs text-gray-400">Now Playing</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // AI Assistant Widget
+  const AIAssistant = () => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-6"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-2">
+          <div className={`p-2 rounded-lg bg-gradient-to-r ${theme.accent}`}>
+            <Brain size={18} className="text-white" />
+          </div>
+          <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
+        </div>
+        <button
+          onClick={() => setShowAISuggestions(!showAISuggestions)}
+          className="text-xs text-purple-400 hover:text-purple-300"
+        >
+          {showAISuggestions ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      <AnimatePresence>
+        {showAISuggestions && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="space-y-3"
+          >
+            {(aiSuggestions.length ? aiSuggestions : []).map((suggestion: any, index: number) => (
+              <motion.div
+                key={suggestion.id || index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="flex items-center justify-between p-3 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer transition-all"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-lg bg-gradient-to-r ${suggestion.color || theme.accent}`}>
+                    {suggestion.icon ? <suggestion.icon size={16} className="text-white" /> : <Sparkles size={16} className="text-white" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{suggestion.title}</p>
+                    <p className="text-xs text-gray-400">{suggestion.description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {suggestion.priority && (
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      suggestion.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                      suggestion.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-green-500/20 text-green-400'
+                    }`}>
+                      {suggestion.priority}
+                    </span>
+                  )}
+                  {suggestion.action && (
+                    <button className="px-3 py-1 text-xs bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-colors">
+                      {suggestion.action}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Fallback content if no AI suggestions are available */}
+            {aiSuggestions.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="p-3 bg-white/5 rounded-lg text-center"
+              >
+                <p className="text-sm text-gray-400">No AI suggestions available at the moment.</p>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+
+  // Smart Notifications Widget
+  const SmartNotifications = () => (
+    <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-white">Privacy & Security</h2>
+        <button 
+          onClick={() => router.push('/settings/privacy')}
+          className="text-xs text-purple-400 hover:text-purple-300"
+        >
+          Settings
+        </button>
+      </div>
+      <div className="space-y-3">
+        {(smartNotifications.length ? smartNotifications : []).map((notification: any, index: number) => (
+          <motion.div
+            key={notification.id || index}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg"
+            onClick={() => {
+              // Placeholder for notification click action
+              // Ideally, navigate to a detailed view or perform an action based on the notification type
+              console.log('Notification clicked:', notification);
+            }}
+          >
+            {notification.icon ? <notification.icon size={16} className={notification.color} /> : <Bell size={16} className="text-purple-400" />}
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">{notification.title}</p>
+              <p className="text-xs text-gray-400">{notification.description}</p>
+            </div>
+            <ArrowRight size={14} className="text-gray-400" />
+          </motion.div>
+        ))}
+
+        {/* Fallback content if no notifications are available */}
+        {smartNotifications.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-3 bg-white/5 rounded-lg text-center"
+          >
+            <p className="text-sm text-gray-400">No new notifications.</p>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
 
   const QuickAccessButtons = () => (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
@@ -401,7 +634,7 @@ export default function HomePage() {
     }
   ];
 
-  const SuggestedContent: React.FC = () => {
+  const SuggestedContent = () => {
     return (
       <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/10 p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -437,7 +670,7 @@ export default function HomePage() {
           )}
         </div>
       </div>
-    );
+        );
   };
 
   if (status === 'loading') {
@@ -469,7 +702,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="h-full bg-gradient-to-br from-gray-900 via-gray-950 to-gray-900 relative overflow-hidden">
+    <div className={`h-full bg-gradient-to-br ${theme.gradient} relative overflow-hidden`}>
       {/* Background glowing elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-64 h-64 bg-purple-600/20 rounded-full filter blur-3xl"></div>
@@ -481,17 +714,20 @@ export default function HomePage() {
       </div>
 
       <div className="relative z-10 h-full overflow-y-auto p-6">
-        {/* Welcome message */}
+        {/* --- DESIGN ADDITIONS --- */}
+        <LiveStatusBar />
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">
-            Welcome back, <span className="bg-gradient-to-r from-cyan-400 to-purple-500 text-transparent bg-clip-text">{session.user?.name?.split(' ')[0] || 'User'}</span>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {currentTime.getHours() < 12 ? 'Good morning' :
+              currentTime.getHours() < 18 ? 'Good afternoon' : 'Good evening'},
+            <span className={`bg-gradient-to-r ${theme.accent} text-transparent bg-clip-text ml-2`}>
+              {session?.user?.name?.split(' ')[0] || 'User'}
+            </span>
           </h1>
-          <p className="text-gray-400">Here's what's happening today</p>
+          <p className="text-gray-300">Your personal command center • {formatTime(currentTime)}</p>
         </div>
-
-        {/* Quick access buttons */}
         <QuickAccessButtons />
-
+        <AIAssistant />
         {/* Stats */}
         <StatsCards />
 
@@ -505,6 +741,7 @@ export default function HomePage() {
           </div>
 
           <div>
+            <SmartNotifications />
             {/* Online friends */}
             <OnlineFriendsList />
           </div>

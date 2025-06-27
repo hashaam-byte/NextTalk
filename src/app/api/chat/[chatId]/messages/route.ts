@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/authConfig";
+import { compare } from "bcryptjs";
 
 export async function GET(
   req: Request,
@@ -10,23 +11,22 @@ export async function GET(
   const { chatId } = params;
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ messages: [], error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify user is participant in this chat
-    const participant = await prisma.participant.findFirst({
-      where: {
-        chatId: chatId,
-        user: {
-          email: session.user.email
-        }
-      }
+    const chat = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: { participants: true }
     });
-
-    if (!participant) {
-      return NextResponse.json({ messages: [], error: "Not authorized to view this chat" }, { status: 403 });
+    if (!chat) return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
+    const isParticipant = chat.participants.some(p => p.userId === session.user.id);
+    if (!isParticipant) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    if (chat.locked) {
+      const pin = req.headers.get('x-chat-pin');
+      if (!pin || !chat.lockPin) {
+        return NextResponse.json({ error: 'Chat locked. PIN required.' }, { status: 401 });
+      }
+      const isValid = await compare(pin, chat.lockPin);
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid PIN' }, { status: 403 });
+      }
     }
 
     // Get messages only for this private chat

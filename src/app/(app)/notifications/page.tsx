@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, UserPlus, MessageSquare, Users, ArrowLeft, Check, X, Zap, Eye, EyeOff } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 interface Notification {
   id: string;
@@ -21,17 +22,27 @@ interface Notification {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredNotification, setHoveredNotification] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pinPrompt, setPinPrompt] = useState(false);
+  const [notificationPin, setNotificationPin] = useState('');
+  const [pinError, setPinError] = useState('');
 
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await fetch('/api/notifications');
-        if (!response.ok) throw new Error('Failed to fetch notifications');
+        const headers: any = {};
+        if (notificationPin) headers['x-notification-pin'] = notificationPin;
+        const response = await fetch('/api/notifications', { headers });
+        
+        if (!response.ok) {
+          if (response.status === 401) setPinPrompt(true);
+          throw new Error('Failed to fetch notifications');
+        }
         
         const data = await response.json();
         setNotifications(data.notifications);
@@ -44,7 +55,7 @@ export default function NotificationsPage() {
     };
 
     fetchNotifications();
-  }, []);
+  }, [notificationPin]);
 
   const markNotificationAsRead = async (notificationId: string) => {
     try {
@@ -452,6 +463,29 @@ export default function NotificationsPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* PIN Prompt UI */}
+      {pinPrompt && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gray-900 p-8 rounded-xl shadow-lg text-center">
+            <h2 className="text-xl font-bold mb-4">Notifications Locked</h2>
+            <input
+              type="password"
+              value={notificationPin}
+              onChange={e => setNotificationPin(e.target.value)}
+              placeholder="Enter notifications PIN"
+              className="mb-4 px-4 py-2 rounded bg-gray-800 border border-gray-700 text-white"
+            />
+            <button
+              onClick={() => { setPinPrompt(false); fetchNotifications(); }}
+              className="px-6 py-2 bg-purple-600 rounded-lg font-medium"
+            >
+              Unlock
+            </button>
+            {pinError && <p className="text-red-400 mt-2">{pinError}</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

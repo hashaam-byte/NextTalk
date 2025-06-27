@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/authConfig';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure Cloudinary
@@ -13,7 +14,7 @@ cloudinary.config({
 export async function POST(request: Request) {
   try {
     // Get session
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {
       console.log('No session or email found');
