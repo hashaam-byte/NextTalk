@@ -329,6 +329,8 @@ export async function GET(req: Request) {
 */
 
 // --- Update post by ID endpoint ---
+// REMOVE or COMMENT OUT this duplicate PATCH handler to fix the build error
+/*
 export async function PATCH(req: Request) {
   // Handles updating a post (caption, visibility, media)
   try {
@@ -427,6 +429,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
+*/
 
 // --- Delete post by ID endpoint ---
 export async function DELETE(req: Request) {
