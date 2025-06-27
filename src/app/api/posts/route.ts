@@ -256,6 +256,7 @@ export async function PATCH(req: Request) {
 }
 
 // --- Post by ID endpoint ---
+/*
 export async function GET(req: Request) {
   // Fetch a single post by ID
   try {
@@ -325,6 +326,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
+*/
 
 // --- Update post by ID endpoint ---
 export async function PATCH(req: Request) {
