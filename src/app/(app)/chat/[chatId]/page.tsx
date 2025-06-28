@@ -7,10 +7,44 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
 import {
-  ArrowLeft, Send, Smile, Video, Phone, MoreVertical,
-  Copy, Forward, Star, Pin, Trash, Flag, Image as ImageIcon,
-  MessageSquare, Play, Plus, Search, BellOff, Download,
-  User, Wallpaper, History, Globe, Calendar, Palette, X, Upload
+  ArrowLeft,
+  Send,
+  Mic,
+  Camera,
+  Paperclip,
+  Smile,
+  Phone,
+  Video,
+  MoreVertical,
+  Search,
+  Pin,
+  Trash2,
+  Reply,
+  Share,
+  Heart,
+  ThumbsUp,
+  Clock,
+  Lock,
+  Sparkles,
+  Palette,
+  Bot,
+  Globe,
+  Eye,
+  EyeOff,
+  Play,
+  Pause,
+  Volume2,
+  Image as ImageIcon,
+  FileText,
+  Link,
+  Calendar,
+  CheckCircle,
+  Users,
+  Music,
+  MapPin,
+  MessageSquare,
+  Plus,
+  Settings
 } from 'lucide-react';
 
 import { useCall } from '@/hooks/useCall';
@@ -125,6 +159,14 @@ export default function ChatPage() {
   const [showUnlockPrompt, setShowUnlockPrompt] = useState(false);
   const [unlockError, setUnlockError] = useState('');
   const [chatLocked, setChatLocked] = useState(false);
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [showPrivacyPanel, setShowPrivacyPanel] = useState(false);
+  const [vanishMode, setVanishMode] = useState(false);
+  const [showMediaSearch, setShowMediaSearch] = useState(false);
+  const [showApplets, setShowApplets] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('dark');
+  const [voiceBubbleActive, setVoiceBubbleActive] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState<string[]>([]);
 
   const WALLPAPER_COLORS = [
     { 
@@ -157,6 +199,28 @@ export default function ChatPage() {
       value: 'from-rose-400/30 via-fuchsia-500/30 to-indigo-500/30',
       pattern: 'bg-[conic-gradient(at_top_right,_var(--tw-gradient-from),_var(--tw-gradient-via),_var(--tw-gradient-to))]'
     }
+  ];
+
+  const aiSuggestions = [
+    "Sounds great! When can we schedule a call?",
+    "I'd love to see more details about this",
+    "Let me check my calendar and get back to you"
+  ];
+
+  const demoMediaItems = [
+    { type: 'image', name: 'design_mockup.jpg', date: 'Today' },
+    { type: 'video', name: 'project_demo.mp4', date: 'Yesterday' },
+    { type: 'document', name: 'requirements.pdf', date: '2 days ago' },
+    { type: 'link', name: 'figma.com/design-system', date: '3 days ago' }
+  ];
+
+  const applets = [
+    { name: 'Polls', icon: '📊', description: 'Create quick polls' },
+    { name: 'Todo', icon: '✅', description: 'Shared task lists' },
+    { name: 'Calendar', icon: '📅', description: 'Schedule events' },
+    { name: 'Music', icon: '🎵', description: 'Share playlists' },
+    { name: 'Location', icon: '📍', description: 'Share locations' },
+    { name: 'Weather', icon: '🌤️', description: 'Weather updates' }
   ];
 
   const scrollToBottom = () => {
@@ -1606,6 +1670,183 @@ export default function ChatPage() {
             </div>
           </div>
         )}
+
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+
+        {/* AI Panel */}
+        {showAIPanel && (
+          <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 p-4 border-b border-white/10 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="text-yellow-400" size={16} />
+                <span className="text-sm font-medium">AI Assistant</span>
+              </div>
+              <div className="flex space-x-2">
+                <button className="p-1 rounded bg-white/10 hover:bg-white/20 transition-all">
+                  <Globe size={14} />
+                </button>
+                <button className="p-1 rounded bg-white/10 hover:bg-white/20 transition-all">
+                  <Bot size={14} />
+                </button>
+              </div>
+            </div>
+            <div className="text-xs text-gray-300 mb-2">Smart Suggestions:</div>
+            <div className="space-y-1">
+              {aiSuggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  onClick={() => setMessage(suggestion)}
+                  className="w-full text-left text-xs p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all duration-200 hover:scale-105"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Privacy Panel */}
+        {showPrivacyPanel && (
+          <div className="bg-gradient-to-r from-red-900/30 to-orange-900/30 p-4 border-b border-white/10 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Lock className="text-red-400" size={16} />
+                <span className="text-sm font-medium">Privacy Controls</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                onClick={() => setVanishMode(!vanishMode)}
+                className={`p-2 rounded-lg flex items-center justify-center space-x-1 transition-all ${
+                  vanishMode ? 'bg-red-500/30 text-red-300' : 'bg-white/10 hover:bg-white/20'
+                }`}
+              >
+                {vanishMode ? <EyeOff size={14} /> : <Eye size={14} />}
+                <span>Vanish Mode</span>
+              </button>
+              <button className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center space-x-1">
+                <Clock size={14} />
+                <span>Timer</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Pinned Messages */}
+        {pinnedMessages.length > 0 && (
+          <div className="bg-yellow-900/30 p-3 border-b border-white/10">
+            <div className="flex items-center space-x-2 mb-2">
+              <Pin className="text-yellow-400" size={14} />
+              <span className="text-xs font-medium">Pinned Messages</span>
+            </div>
+            <div className="text-xs text-gray-300">
+              {pinnedMessages.length} message(s) pinned
+            </div>
+          </div>
+        )}
+
+        {/* Quick Actions Bar */}
+        <div className="px-4 py-2 bg-black/20 backdrop-blur-md border-t border-white/10">
+          <div className="flex space-x-4 overflow-x-auto">
+            <button
+              onClick={() => setShowMediaSearch(!showMediaSearch)}
+              className="flex items-center space-x-1 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs whitespace-nowrap"
+            >
+              <Search size={12} />
+              <span>Media</span>
+            </button>
+            <button
+              onClick={() => setShowApplets(!showApplets)}
+              className="flex items-center space-x-1 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs whitespace-nowrap"
+            >
+              <Settings size={12} />
+              <span>Apps</span>
+            </button>
+            <button className="flex items-center space-x-1 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs whitespace-nowrap">
+              <Palette size={12} />
+              <span>Theme</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Media Search Panel */}
+        {showMediaSearch && (
+          <div className="bg-black/30 backdrop-blur-md p-4 border-t border-white/10 max-h-48 overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">Media & Files</span>
+              <button
+                onClick={() => setShowMediaSearch(false)}
+                className="text-gray-400 hover:text-white transition-all"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {demoMediaItems.map((item, index) => (
+                <div key={index} className="flex items-center space-x-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all">
+                  <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">
+                    {item.type === 'image' && <ImageIcon size={16} />}
+                    {item.type === 'video' && <Play size={16} />}
+                    {item.type === 'document' && <FileText size={16} />}
+                    {item.type === 'link' && <Link size={16} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-white truncate">{item.name}</div>
+                    <div className="text-xs text-gray-400">{item.date}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Applets Panel */}
+        {showApplets && (
+          <div className="bg-black/30 backdrop-blur-md p-4 border-t border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">Chat Applets</span>
+              <button
+                onClick={() => setShowApplets(false)}
+                className="text-gray-400 hover:text-white transition-all"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {applets.map((applet, index) => (
+                <button
+                  key={index}
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200 hover:scale-105 text-center"
+                >
+                  <div className="text-2xl mb-1">{applet.icon}</div>
+                  <div className="text-xs font-medium">{applet.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quick Theme Switcher */}
+        <div className="flex items-center justify-center space-x-2 mt-3">
+          {['dark', 'ocean', 'sunset', 'forest'].map((theme) => (
+            <button
+              key={theme}
+              onClick={() => setCurrentTheme(theme)}
+              className={`w-6 h-6 rounded-full border-2 transition-all duration-300 ${
+                currentTheme === theme ? 'border-white scale-110' : 'border-white/30 hover:border-white/60'
+              } ${
+                theme === 'dark' ? 'bg-gradient-to-br from-gray-900 to-purple-900' :
+                theme === 'ocean' ? 'bg-gradient-to-br from-blue-600 to-teal-600' :
+                theme === 'sunset' ? 'bg-gradient-to-br from-orange-600 to-pink-600' :
+                'bg-gradient-to-br from-green-600 to-teal-600'
+              }`}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
