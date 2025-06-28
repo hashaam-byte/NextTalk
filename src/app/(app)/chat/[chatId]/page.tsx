@@ -10,8 +10,14 @@ import {
   ArrowLeft,
   Send,
   Mic,
+  BellOff,
+  Download,
+  Upload,
+  Trash,
+  Flag,
   Camera,
   Paperclip,
+  User,
   Smile,
   Phone,
   Video,
@@ -57,6 +63,7 @@ import CallConfirmDialog from '@/components/chat/CallConfirmDialog';
 import MediaViewer from '@/components/chat/MediaViewer';
 import { videoClient } from '@/lib/stream';
 import type { SelectedMedia } from '@/types/chat';
+import dynamic from 'next/dynamic';
 
 const PICKER_ITEMS = [
   { type: 'emoji', icon: '😊', label: 'Emojis' },
@@ -109,6 +116,9 @@ interface CallNotification {
   };
   startTime?: Date;
 }
+
+// Dynamically import the ThemeModal (from /theme page)
+const ThemeModal = dynamic(() => import('@/app/theme/ThemeModal'), { ssr: false });
 
 export default function ChatPage() {
   const { chatId } = useParams();
@@ -167,6 +177,8 @@ export default function ChatPage() {
   const [currentTheme, setCurrentTheme] = useState('dark');
   const [voiceBubbleActive, setVoiceBubbleActive] = useState(false);
   const [pinnedMessages, setPinnedMessages] = useState<string[]>([]);
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState('normal');
 
   const WALLPAPER_COLORS = [
     { 
@@ -833,7 +845,76 @@ export default function ChatPage() {
     }
   }, [chatId]);
 
-  // Update the background style based on wallpaper
+  // Listen for theme changes (fetch from API on mount)
+  useEffect(() => {
+    const fetchTheme = async () => {
+      try {
+        const res = await fetch(`/api/chat/${chatId}/theme`);
+        const data = await res.json();
+        if (data.theme) setSelectedTheme(data.theme);
+      } catch {}
+    };
+    if (chatId && session?.user) fetchTheme();
+  }, [chatId, session?.user]);
+
+  // Handler to set theme (called from modal)
+  const handleThemeChange = async (themeId: string) => {
+    setSelectedTheme(themeId);
+    setShowThemeModal(false);
+    try {
+      await fetch(`/api/chat/${chatId}/theme`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: themeId }),
+      });
+    } catch {}
+  };
+
+  // Theme bubble classes (should match bundles in /theme page)
+  const THEME_BUNDLES = {
+    normal: {
+      mine: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-l-2xl rounded-tr-2xl',
+      other: 'bg-white/10 text-white rounded-r-2xl rounded-tl-2xl',
+    },
+    'purple-ash': {
+      mine: 'bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white rounded-l-2xl rounded-tr-2xl',
+      other: 'bg-neutral-900 text-gray-200 rounded-r-2xl rounded-tl-2xl',
+    },
+    'blue-green': {
+      mine: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-l-2xl rounded-tr-2xl',
+      other: 'bg-gradient-to-r from-green-600 to-emerald-500 text-white rounded-r-2xl rounded-tl-2xl',
+    },
+    'orange-dark': {
+      mine: 'bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-l-2xl rounded-tr-2xl',
+      other: 'bg-gray-800 text-white rounded-r-2xl rounded-tl-2xl',
+    },
+    'emerald-teal': {
+      mine: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-l-2xl rounded-tr-2xl',
+      other: 'bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-r-2xl rounded-tl-2xl',
+    },
+    'rose-gold': {
+      mine: 'bg-gradient-to-r from-rose-400 to-pink-400 text-white rounded-l-2xl rounded-tr-2xl',
+      other: 'bg-gradient-to-r from-amber-200 to-yellow-200 text-gray-900 rounded-r-2xl rounded-tl-2xl',
+    },
+  };
+  const getBubbleClass = (isMine: boolean) => {
+    const theme = THEME_BUNDLES[selectedTheme] || THEME_BUNDLES.normal;
+    return isMine ? theme.mine : theme.other;
+  };
+
+  useEffect(() => {
+    const handleThemeChangeEvent = (e: CustomEvent) => {
+      const { theme } = e.detail;
+      setSelectedTheme(theme);
+    };
+
+    window.addEventListener('themeChange', handleThemeChangeEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('themeChange', handleThemeChangeEvent as EventListener);
+    };
+  }, []);
+
   const getBackgroundStyle = () => {
     if (customWallpaper) {
       return {
@@ -937,7 +1018,8 @@ export default function ChatPage() {
       {/* Wrap existing content in a relative container */}
       <div className="relative z-10 flex flex-col h-full">
         {/* Fixed Chat Header */}
-        <div className="sticky top-0 z-30 bg-black/20 backdrop-blur-lg border-b border-white/10">
+        <div className={`sticky top-0 z-30 bg-black/20 backdrop-blur-lg border-b border-white/10 transition-all duration-300
+          ${showThemeModal ? 'pointer-events-none blur-[3px] opacity-60' : ''}`}>
           <div className="flex items-center p-3 sm:p-4">
             <button
               onClick={() => router.back()}
@@ -1024,103 +1106,114 @@ export default function ChatPage() {
 
                   <AnimatePresence>
                     {isMenuOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute right-0 mt-2 w-64 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 max-h-[calc(100vh-100px)] overflow-y-auto"
-                      >
-                        <div className="p-1 space-y-1">
-                          <button
-                            onClick={() => {
-                              setShowContactInfo(true);
-                              setIsMenuOpen(false);
-                            }}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
-                          >
-                            <User size={18} className="mr-3 text-purple-400" />
-                            View Contact
-                          </button>
+                      <>
+                        {/* Overlay for blur and closing */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="fixed inset-0 z-[70] bg-black/30 backdrop-blur-sm"
+                          onClick={() => setIsMenuOpen(false)}
+                        />
+                        {/* Dropdown: open downwards below the button (mt-2 instead of bottom-12) */}
+                        <motion.div
+                          initial={{ opacity: 0, y: -10, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                          className="absolute right-0 mt-2 w-64 bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/10 max-h-[calc(100vh-100px)] overflow-y-auto z-[80]"
+                        >
+                          <div className="p-1 space-y-1">
+                            <button
+                              onClick={() => {
+                                setShowContactInfo(true);
+                                setIsMenuOpen(false);
+                              }}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
+                            >
+                              <User size={18} className="mr-3 text-purple-400" />
+                              View Contact
+                            </button>
 
-                          <button
-                            onClick={() => {
-                              handleFetchMedia();
-                              setShowMediaGrid(true);
-                              setIsMenuOpen(false);
-                            }}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
-                          >
-                            <ImageIcon size={18} className="mr-3 text-purple-400" />
-                            Media, Links, and Docs
-                          </button>
+                            <button
+                              onClick={() => {
+                                handleFetchMedia();
+                                setShowMediaGrid(true);
+                                setIsMenuOpen(false);
+                              }}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
+                            >
+                              <ImageIcon size={18} className="mr-3 text-purple-400" />
+                              Media, Links, and Docs
+                            </button>
 
-                          <button
-                            onClick={() => setShowSearch(true)}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
-                          >
-                            <Search size={18} className="mr-3 text-blue-400" />
-                            Search in Chat
-                          </button>
+                            <button
+                              onClick={() => setShowSearch(true)}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
+                            >
+                              <Search size={18} className="mr-3 text-blue-400" />
+                              Search in Chat
+                            </button>
 
-                          <button
-                            onClick={handleMuteContact}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
-                          >
-                            <BellOff size={18} className="mr-3 text-yellow-400" />
-                            Mute Notifications
-                          </button>
+                            <button
+                              onClick={handleMuteContact}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
+                            >
+                              <BellOff size={18} className="mr-3 text-yellow-400" />
+                              Mute Notifications
+                            </button>
 
-                          <button
-                            onClick={() => setShowDatePicker(true)}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
-                          >
-                            <Calendar size={18} className="mr-3 text-blue-400" />
-                            Jump to Date
-                          </button>
+                            <button
+                              onClick={() => setShowDatePicker(true)}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
+                            >
+                              <Calendar size={18} className="mr-3 text-blue-400" />
+                              Jump to Date
+                            </button>
 
-                          <button
-                            onClick={() => setShowWallpaperPicker(true)}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
-                          >
-                            <Palette size={18} className="mr-3 text-purple-400" />
-                            Change Wallpaper
-                          </button>
+                            <button
+                              onClick={() => setShowWallpaperPicker(true)}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
+                            >
+                              <Palette size={18} className="mr-3 text-purple-400" />
+                              Change Wallpaper
+                            </button>
 
-                          <hr className="border-white/10" />
+                            <hr className="border-white/10" />
 
-                          <button
-                            onClick={handleExportChat}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
-                          >
-                            <Download size={18} className="mr-3 text-blue-400" />
-                            Export Chat
-                          </button>
+                            <button
+                              onClick={handleExportChat}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-gray-200"
+                            >
+                              <Download size={18} className="mr-3 text-blue-400" />
+                              Export Chat
+                            </button>
 
-                          <button
-                            onClick={handleClearChat}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-red-400"
-                          >
-                            <Trash size={18} className="mr-3" />
-                            Clear Chat
-                          </button>
+                            <button
+                              onClick={handleClearChat}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-red-400"
+                            >
+                              <Trash size={18} className="mr-3" />
+                              Clear Chat
+                            </button>
 
-                          <button
-                            onClick={handleBlockContact}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-red-400"
-                          >
-                            <User size={18} className="mr-3" />
-                            Block Contact
-                          </button>
+                            <button
+                              onClick={handleBlockContact}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-red-400"
+                            >
+                              <User size={18} className="mr-3" />
+                              Block Contact
+                            </button>
 
-                          <button
-                            onClick={handleReportContact}
-                            className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-red-400"
-                          >
-                            <Flag size={18} className="mr-3" />
-                            Report Contact
-                          </button>
-                        </div>
-                      </motion.div>
+                            <button
+                              onClick={handleReportContact}
+                              className="flex items-center w-full p-3 hover:bg-white/10 rounded-lg text-red-400"
+                            >
+                              <Flag size={18} className="mr-3" />
+                              Report Contact
+                            </button>
+                          </div>
+                        </motion.div>
+                      </>
                     )}
                   </AnimatePresence>
                 </div>
@@ -1193,11 +1286,7 @@ export default function ChatPage() {
                         </div>
                       )}
 
-                      <div className={`max-w-[75%] ${
-                        isMine 
-                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-l-2xl rounded-tr-2xl' 
-                          : 'bg-white/10 text-white rounded-r-2xl rounded-tl-2xl'
-                      } px-4 py-2`}>
+                      <div className={`max-w-[75%] ${getBubbleClass(isMine)} px-4 py-2`}>
                         <p className="break-words">{msg.content}</p>
                         <div className={`flex items-center mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <span className="text-xs text-white/60">
@@ -1766,12 +1855,36 @@ export default function ChatPage() {
               <Settings size={12} />
               <span>Apps</span>
             </button>
-            <button className="flex items-center space-x-1 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs whitespace-nowrap">
+            <button
+              onClick={() => setShowThemeModal(true)}
+              className="flex items-center space-x-1 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs whitespace-nowrap"
+            >
               <Palette size={12} />
               <span>Theme</span>
             </button>
           </div>
         </div>
+
+        {/* Add Theme Modal (loads /theme page as a modal) */}
+        <AnimatePresence>
+          {showThemeModal && (
+            <ThemeModal
+              isOpen={showThemeModal}
+              currentTheme={selectedTheme}
+              onSelect={async (themeId: string) => {
+                setSelectedTheme(themeId);
+                setShowThemeModal(false);
+                // Save to DB for this chat
+                await fetch(`/api/chat/${chatId}/theme`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ theme: themeId }),
+                });
+              }}
+              onClose={() => setShowThemeModal(false)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Media Search Panel */}
         {showMediaSearch && (
@@ -1829,24 +1942,6 @@ export default function ChatPage() {
             </div>
           </div>
         )}
-
-        {/* Quick Theme Switcher */}
-        <div className="flex items-center justify-center space-x-2 mt-3">
-          {['dark', 'ocean', 'sunset', 'forest'].map((theme) => (
-            <button
-              key={theme}
-              onClick={() => setCurrentTheme(theme)}
-              className={`w-6 h-6 rounded-full border-2 transition-all duration-300 ${
-                currentTheme === theme ? 'border-white scale-110' : 'border-white/30 hover:border-white/60'
-              } ${
-                theme === 'dark' ? 'bg-gradient-to-br from-gray-900 to-purple-900' :
-                theme === 'ocean' ? 'bg-gradient-to-br from-blue-600 to-teal-600' :
-                theme === 'sunset' ? 'bg-gradient-to-br from-orange-600 to-pink-600' :
-                'bg-gradient-to-br from-green-600 to-teal-600'
-              }`}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -1876,7 +1971,6 @@ function isSameDay(date1: Date, date2: Date) {
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate();
 }
-
 // Helper function to get status icon
 function getStatusIcon(status: string) {
   switch (status) {

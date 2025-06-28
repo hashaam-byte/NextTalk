@@ -468,3 +468,11 @@ model AiSuggestion {
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id]) // keep as is
 }
+
+model chatTheme {
+  chatId   String
+  userId   String
+  theme    String
+  // composite key for upsert
+  @@id([chatId, userId])
+}
