@@ -2,16 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Send, X, Users, Clock, Star, Zap, Check, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
 
 interface Contact {
   id: string;
   name: string;
-  avatar: string;
+  avatar: string | null;
   status: 'online' | 'offline' | 'away';
   lastSeen: string;
   isGroup?: boolean;
   memberCount?: number;
   category: 'recent' | 'frequent' | 'starred' | 'all';
+  profileImage?: string | null;
 }
 
 interface Message {
@@ -44,7 +46,8 @@ const ForwardPage: React.FC = () => {
         const mapped: Contact[] = (data.contacts || []).map((contact: any) => ({
           id: contact.id,
           name: contact.name || 'Unknown',
-          avatar: contact.profileImage || '💬',
+          avatar: contact.profileImage || null,
+          profileImage: contact.profileImage || null,
           status: contact.status === 'online' ? 'online' : contact.status === 'away' ? 'away' : 'offline',
           lastSeen: contact.lastSeen ? new Date(contact.lastSeen).toLocaleString() : 'Never',
           isGroup: false,
@@ -161,15 +164,35 @@ const ForwardPage: React.FC = () => {
     all: 'All'
   };
 
+  // Helper for rendering contact avatar/profile image (like chatId page)
+  function ContactAvatar({ contact }: { contact: Contact }) {
+    if (contact.profileImage) {
+      return (
+        <Image
+          src={contact.profileImage}
+          alt={contact.name}
+          width={56}
+          height={56}
+          className="w-14 h-14 rounded-full object-cover border-2 border-white/20 shadow-lg"
+        />
+      );
+    }
+    return (
+      <div className="w-14 h-14 bg-gradient-to-br from-purple-600/30 to-indigo-600/30 rounded-full flex items-center justify-center text-xl border-2 border-white/20 shadow-lg">
+        <span className="text-white font-medium">{contact.name?.[0] || '💬'}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white relative overflow-hidden">
       {/* Enhanced animated background */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse" style={{ animationDelay: '4s' }}></div>
-        <div className="absolute top-20 left-20 w-32 h-32 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-15 animate-pulse" style={{ animationDelay: '3s' }}></div>
+        <div className="absolute -top-40 -right-40 w-[28rem] h-[28rem] bg-purple-500 rounded-full mix-blend-multiply filter blur-2xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-[28rem] h-[28rem] bg-blue-500 rounded-full mix-blend-multiply filter blur-2xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[22rem] h-[22rem] bg-indigo-500 rounded-full mix-blend-multiply filter blur-2xl opacity-10 animate-pulse" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute top-20 left-20 w-48 h-48 bg-pink-500 rounded-full mix-blend-multiply filter blur-2xl opacity-15 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-20 right-20 w-56 h-56 bg-cyan-500 rounded-full mix-blend-multiply filter blur-2xl opacity-15 animate-pulse" style={{ animationDelay: '3s' }}></div>
       </div>
 
       <div className="relative z-10 max-w-md mx-auto bg-black/20 backdrop-blur-xl border border-white/10 min-h-screen shadow-2xl">
@@ -223,25 +246,27 @@ const ForwardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Enhanced Tab Navigation */}
-        <div className="flex space-x-2 p-4 bg-black/20">
-          {(Object.keys(tabIcons) as Array<keyof typeof tabIcons>).map(tab => {
-            const Icon = tabIcons[tab];
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all duration-200 font-medium ${
-                  activeTab === tab
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg scale-105'
-                    : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:scale-105'
-                }`}
-              >
-                <Icon size={16} />
-                <span className="text-sm">{tabLabels[tab]}</span>
-              </button>
-            );
-          })}
+        {/* Fixed Tab Navigation - Adjustable background */}
+        <div className="px-1 pt-6 pb-4 bg-black/30">
+          <div className="flex space-x-1 w-full">
+            {(Object.keys(tabIcons) as Array<keyof typeof tabIcons>).map(tab => {
+              const Icon = tabIcons[tab];
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 flex flex-col items-center justify-center py-3 px-1 rounded-xl transition-all duration-200 font-medium text-sm ${
+                    activeTab === tab
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg scale-105'
+                      : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:scale-105'
+                  }`}
+                >
+                  <Icon size={16} className="mb-1" />
+                  <span className="text-xs leading-tight text-center">{tabLabels[tab]}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Loading State */}
@@ -264,7 +289,6 @@ const ForwardPage: React.FC = () => {
               <p className="text-gray-400">No contacts found</p>
             </div>
           )}
-          
           {filteredContacts.map((contact, index) => (
             <div
               key={contact.id}
@@ -277,9 +301,7 @@ const ForwardPage: React.FC = () => {
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="relative">
-                <div className="w-14 h-14 bg-gradient-to-br from-gray-600 to-gray-800 rounded-full flex items-center justify-center text-xl border-2 border-white/20 shadow-lg">
-                  {contact.avatar}
-                </div>
+                <ContactAvatar contact={contact} />
                 <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${getStatusColor(contact.status)} rounded-full border-2 border-black shadow-sm`}></div>
                 {selectedContacts.includes(contact.id) && (
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
