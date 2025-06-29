@@ -11,7 +11,11 @@ import {
   Send,
   Mic,
   BellOff,
+  X,
+  Star,
   Download,
+  Forward,
+  Copy,
   Upload,
   Trash,
   Flag,
@@ -150,7 +154,6 @@ export default function ChatPage() {
   } | null>(null);
   const call = useCall(global.io);
   const [expressionType, setExpressionType] = useState<'emoji' | 'sticker' | 'gif' | null>(null);
-  const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
   const [showCallConfirm, setShowCallConfirm] = useState(false);
   const [pendingCallType, setPendingCallType] = useState<'audio' | 'video' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,6 +182,10 @@ export default function ChatPage() {
   const [pinnedMessages, setPinnedMessages] = useState<string[]>([]);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState('normal');
+  const [showAppsPanel, setShowAppsPanel] = useState(false);
+
+  // State for bottom sheet navigation
+  const [bottomSheetPage, setBottomSheetPage] = useState<'apps' | 'gallery' | 'camera' | null>(null);
 
   const WALLPAPER_COLORS = [
     { 
@@ -395,6 +402,7 @@ export default function ChatPage() {
     fetchContactInfo();
   }, [showContactInfo, chatInfo?.id]);
 
+  // 1. Patch for play/pause error in ringtone handling
   useEffect(() => {
     if (!global.io) return;
 
@@ -404,7 +412,10 @@ export default function ChatPage() {
       // Play ringtone
       const audio = new Audio('/sounds/ringtone.mp3');
       audio.loop = true;
+      // Only play if not already playing
       audio.play().catch(console.error);
+      // Save audio to ref for later pause
+      (window as any)._nexusRingtone = audio;
     });
 
     // Handle call accepted
@@ -414,18 +425,17 @@ export default function ChatPage() {
         status: 'ongoing',
         startTime: new Date(data.startTime)
       } : null);
-      
       // Stop ringtone if playing
-      const audioElements = document.getElementsByTagName('audio');
-      Array.from(audioElements).forEach(audio => audio.pause());
+      const audio = (window as any)._nexusRingtone;
+      if (audio && !audio.paused) audio.pause();
     });
 
     // Handle call rejected/ended
     global.io.on('call:rejected', () => {
       setActiveCall(null);
       // Stop ringtone if playing
-      const audioElements = document.getElementsByTagName('audio');
-      Array.from(audioElements).forEach(audio => audio.pause());
+      const audio = (window as any)._nexusRingtone;
+      if (audio && !audio.paused) audio.pause();
     });
 
     return () => {
@@ -586,14 +596,14 @@ export default function ChatPage() {
     setMessage(prev => prev + emoji);
   };
 
-  const handleStartCall = async (type: 'audio' | 'video') => {
+  const handleStartCall = (type: 'audio' | 'video') => {
     setPendingCallType(type);
     setShowCallConfirm(true);
   };
 
+  // 2. Patch for handleConfirmCall: use correct token field
   const handleConfirmCall = async () => {
     if (!pendingCallType || !chatInfo || !session?.user) return;
-
     try {
       // Create call record in database
       const response = await fetch('/api/calls', {
@@ -605,24 +615,19 @@ export default function ChatPage() {
           chatId: chatId,
         }),
       });
-
       if (!response.ok) throw new Error('Failed to create call');
-      
-      const { callId, streamToken } = await response.json();
-
+      const { callId, token } = await response.json();
       // Initialize Stream call
       const streamCall = await videoClient.call('default', callId);
       await streamCall.getOrCreate({ 
         members: [session.user.id, chatInfo.id],
         options: { ring: true }
       });
-
       setActiveCall({
         id: callId,
         type: pendingCallType,
         status: 'ongoing'
       });
-
     } catch (error) {
       console.error('Error starting call:', error);
       // Show error notification
@@ -681,13 +686,6 @@ export default function ChatPage() {
     }
     sendMessage(messageContent);
     setExpressionType(null);
-  };
-
-  const handleExpressionButtonClick = (type: 'emoji' | 'sticker' | 'gif', event: React.MouseEvent) => {
-    const button = event.currentTarget;
-    const rect = button.getBoundingClientRect();
-    setPickerPosition({ x: rect.left, y: rect.top - 450 }); // Adjust 450 based on your picker height
-    setExpressionType(prev => prev === type ? null : type);
   };
 
   const handleClearChat = async () => {
@@ -1006,7 +1004,145 @@ export default function ChatPage() {
     </motion.div>
   );
 
-  // Update the main container div:
+  // Picker modal state
+  const [showPickerModal, setShowPickerModal] = useState(false);
+  const [pickerTab, setPickerTab] = useState<'emoji' | 'sticker' | 'gif' | 'attach'>('emoji');
+
+  // Audio recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+
+  // File upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Audio recording logic
+  const handleStartRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      setMediaRecorder(recorder);
+      setAudioChunks([]);
+      recorder.ondataavailable = (e) => setAudioChunks((prev) => [...prev, e.data]);
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        // Upload audio to server
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        await fetch(`/api/chat/${chatId}/media`, {
+          method: 'POST',
+          body: formData,
+        });
+        setIsRecording(false);
+      };
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      setIsRecording(false);
+    }
+  };
+  const handleStopRecording = () => {
+    mediaRecorder?.stop();
+    setMediaRecorder(null);
+  };
+
+  // File upload logic
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await fetch(`/api/chat/${chatId}/media`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setShowPickerModal(false);
+  };
+
+  // Picker modal content
+  const renderPickerModal = () => (
+    <AnimatePresence>
+      {showPickerModal && (
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 40 }}
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/40"
+        >
+          <div className="bg-gray-900/95 w-full max-w-lg rounded-t-2xl p-4 border-t border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex space-x-4">
+                <button onClick={() => setPickerTab('emoji')} className={pickerTab === 'emoji' ? 'text-purple-400' : 'text-gray-400'}>😊</button>
+                <button onClick={() => setPickerTab('sticker')} className={pickerTab === 'sticker' ? 'text-purple-400' : 'text-gray-400'}>🎯</button>
+                <button onClick={() => setPickerTab('gif')} className={pickerTab === 'gif' ? 'text-purple-400' : 'text-gray-400'}>🎬</button>
+                <button onClick={() => setPickerTab('attach')} className={pickerTab === 'attach' ? 'text-purple-400' : 'text-gray-400'}><Paperclip size={18} /></button>
+              </div>
+              <button onClick={() => setShowPickerModal(false)} className="p-2 rounded-full hover:bg-white/10 text-gray-400">
+                <X size={20} />
+              </button>
+            </div>
+            <div>
+              {pickerTab === 'emoji' && (
+                <EmojiPicker
+                  onEmojiSelect={(emoji) => {
+                    setMessage((m) => m + emoji);
+                    setShowPickerModal(false);
+                  }}
+                  isOpen={true}
+                  onClose={() => setShowPickerModal(false)}
+                />
+              )}
+              {pickerTab === 'sticker' && (
+                <StickerPicker
+                  onStickerSelect={(sticker) => {
+                    sendMessage(`[sticker:${sticker}]`);
+                    setShowPickerModal(false);
+                  }}
+                  isOpen={true}
+                  onClose={() => setShowPickerModal(false)}
+                />
+              )}
+              {pickerTab === 'gif' && (
+                <GifPicker
+                  onGifSelect={(gif) => {
+                    sendMessage(`[gif:${gif}]`);
+                    setShowPickerModal(false);
+                  }}
+                  isOpen={true}
+                  onClose={() => setShowPickerModal(false)}
+                />
+              )}
+              {pickerTab === 'attach' && (
+                <div className="grid grid-cols-4 gap-4 mt-2">
+                  <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center">
+                    <ImageIcon size={28} /><span className="text-xs mt-1">Image</span>
+                  </button>
+                  <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center">
+                    <Video size={28} /><span className="text-xs mt-1">Video</span>
+                  </button>
+                  <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center">
+                    <FileText size={28} /><span className="text-xs mt-1">Doc</span>
+                  </button>
+                  {/* Add more attachment types as needed */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*,video/*,application/pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  // --- Begin Render ---
   return (
     <div 
       className="h-[100dvh] flex flex-col relative"
@@ -1308,7 +1444,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Expression Picker Overlay */}
+        {/* Expression Picker Overlay (restored) */}
         <AnimatePresence>
           {expressionType && (
             <motion.div
@@ -1340,7 +1476,6 @@ export default function ChatPage() {
                     </button>
                   ))}
                 </div>
-
                 {/* Content */}
                 <div className="p-4">
                   {expressionType === 'emoji' && (
@@ -1370,360 +1505,149 @@ export default function ChatPage() {
           )}
         </AnimatePresence>
 
-        {/* Fixed Bottom Input Section */}
+        {/* WhatsApp-style Typing Area (no left-side buttons) */}
         <div className="sticky bottom-0 z-30 bg-black/20 backdrop-blur-lg border-t border-white/10 p-3">
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={(e) => handleExpressionButtonClick('emoji', e)}
-                className={`p-2 rounded-full transition-colors ${
-                  expressionType === 'emoji' 
-                    ? 'bg-purple-500/20 text-purple-400' 
-                    : 'text-gray-400 hover:bg-white/10'
-                }`}
-              >
-                <Smile size={20} />
-              </button>
-              <button
-                onClick={(e) => handleExpressionButtonClick('sticker', e)}
-                className={`p-2 rounded-full transition-colors ${
-                  expressionType === 'sticker' 
-                    ? 'bg-purple-500/20 text-purple-400' 
-                    : 'text-gray-400 hover:bg-white/10'
-                }`}
-              >
-                <MessageSquare size={20} />
-              </button>
-              <button
-                onClick={(e) => handleExpressionButtonClick('gif', e)}
-                className={`p-2 rounded-full transition-colors ${
-                  expressionType === 'gif' 
-                    ? 'bg-purple-500/20 text-purple-400' 
-                    : 'text-gray-400 hover:bg-white/10'
-                }`}
-              >
-                <Plus size={20} />
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                sendMessage();
-              }}
-              className="flex items-center space-x-2 flex-1"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendMessage();
+            }}
+            className="flex items-center space-x-2 flex-1"
+          >
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
+            />
+            {/* "+" icon for modal picker */}
+            <button
+              type="button"
+              className="p-2 rounded-full hover:bg-white/10 text-gray-400"
+              onClick={() => setShowPickerModal(true)}
+              tabIndex={-1}
             >
-              {/* Message Input */}
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type a message..."
-                className="flex-1 bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
-              />
-              
-              {/* Send Button */}
+              <Plus size={22} />
+            </button>
+            {/* Mic or Send icon */}
+            {message.trim() === '' ? (
+              isRecording ? (
+                <button
+                  type="button"
+                  className="p-2 rounded-full bg-red-600 text-white"
+                  onClick={handleStopRecording}
+                >
+                  <Mic size={22} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="p-2 rounded-full hover:bg-white/10 text-gray-400"
+                  onClick={handleStartRecording}
+                >
+                  <Mic size={22} />
+                </button>
+              )
+            ) : (
               <button
                 type="submit"
-                disabled={!message.trim()}
-                className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white disabled:opacity-50"
+                className="p-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
               >
-                <Send size={20} />
+                <Send size={22} />
               </button>
-            </form>
-          </div>
+            )}
+          </form>
         </div>
 
-        {/* Message Actions Menu */}
+        {/* Emoji/Sticker/GIF/Attachment Picker Modal (new) */}
+        {renderPickerModal()}
+
+        {/* Call Confirm Dialog (restored) */}
+        <AnimatePresence>
+          {showCallConfirm && (
+            <CallConfirmDialog
+              isOpen={showCallConfirm}
+              type={pendingCallType}
+              onConfirm={handleConfirmCall}
+              onCancel={() => setShowCallConfirm(false)}
+              contact={chatInfo}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Message Actions Context Menu (right-click/long-press) */}
         <AnimatePresence>
           {showMessageActions && selectedMessage && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-50 bg-gray-900/95 backdrop-blur-lg rounded-xl border border-white/10 shadow-xl p-1 w-48"
-              style={{
-                left: Math.min(messageActionsPosition.x, window.innerWidth - 192),
-                top: Math.min(messageActionsPosition.y, window.innerHeight - 200)
-              }}
-              ref={messageActionsRef}
-            >
-              <button
-                onClick={() => handleMessageAction('copy')}
-                className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
+            <>
+              {/* Overlay to close menu on click elsewhere */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.01 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-40"
+                onClick={() => {
+                  setShowMessageActions(false);
+                  setSelectedMessage(null);
+                }}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="fixed z-50 bg-gray-900/95 backdrop-blur-lg rounded-xl border border-white/10 shadow-xl p-1 w-48"
+                style={{
+                  left: Math.min(messageActionsPosition.x, window.innerWidth - 192),
+                  top: Math.min(messageActionsPosition.y, window.innerHeight - 200)
+                }}
+                ref={messageActionsRef}
               >
-                <Copy size={16} className="mr-2" />
-                Copy
-              </button>
-              {selectedMessage.senderId === session?.user?.id && (
                 <button
-                  onClick={() => handleMessageAction('delete')}
+                  onClick={() => handleMessageAction('copy')}
+                  className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
+                >
+                  <Copy size={16} className="mr-2" />
+                  Copy
+                </button>
+                <button
+                  onClick={() => handleMessageAction('forward')}
+                  className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
+                >
+                  <Forward size={16} className="mr-2" />
+                  Forward
+                </button>
+                <button
+                  onClick={() => handleMessageAction('star')}
+                  className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
+                >
+                  <Star size={16} className="mr-2" />
+                  {selectedMessage.isStarred ? 'Unstar' : 'Star'}
+                </button>
+                <button
+                  onClick={() => handleMessageAction('pin')}
+                  className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
+                >
+                  <Pin size={16} className="mr-2" />
+                  {selectedMessage.isPinned ? 'Unpin' : 'Pin'}
+                </button>
+                {selectedMessage.senderId === session?.user?.id && (
+                  <button
+                    onClick={() => handleMessageAction('delete')}
+                    className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-red-400"
+                  >
+                    <Trash size={16} className="mr-2" />
+                    Delete
+                  </button>
+                )}
+                <button
+                  onClick={() => handleMessageAction('report')}
                   className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-red-400"
                 >
-                  <Trash size={16} className="mr-2" />
-                  Delete
+                  <Flag size={16} className="mr-2" />
+                  Report
                 </button>
-              )}
-              <button
-                onClick={() => handleMessageAction('forward')}
-                className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
-              >
-                <Forward size={16} className="mr-2" />
-                Forward
-              </button>
-              <button
-                onClick={() => handleMessageAction('star')}
-                className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
-              >
-                <Star size={16} className="mr-2" />
-                {selectedMessage.isStarred ? 'Unstar' : 'Star'}
-              </button>
-              <button
-                onClick={() => handleMessageAction('pin')}
-                className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-gray-200"
-              >
-                <Pin size={16} className="mr-2" />
-                {selectedMessage.isPinned ? 'Unpin' : 'Pin'}
-              </button>
-              <button
-                onClick={() => handleMessageAction('report')}
-                className="flex items-center w-full p-2 hover:bg-white/10 rounded-lg text-red-400"
-              >
-                <Flag size={16} className="mr-2" />
-                Report
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Call Overlay */}
-        <AnimatePresence>
-          {call.isInCall && (
-            <CallOverlay
-              type={call.callType!}
-              callState={call.callState!}
-              caller={call.caller!}
-              duration={call.duration}
-              onAnswer={() => call.answerCall(chatId)}
-              onDecline={() => call.declineCall(chatId)}
-              onEndCall={call.endCall}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Contact Info Drawer */}
-        <AnimatePresence>
-          {showContactInfo && chatInfo && (
-            <ContactDrawer
-              chatId={chatId as string}
-              contact={{
-                ...chatInfo,
-                id: chatId as string,
-                profileImage: chatInfo.avatar,
-                status: chatInfo.status || 'offline',
-                lastSeen: chatInfo.lastSeen,
-                deviceType: chatInfo.deviceType,
-                isTyping: chatInfo.isTyping
-              }}
-              commonGroups={[]} // Fetch from API
-              onClose={() => setShowContactInfo(false)}
-              onMute={handleMuteContact}
-              onBlock={handleBlockContact}
-              onReport={handleReportContact}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Call Confirm Dialog */}
-        <CallConfirmDialog
-          isOpen={showCallConfirm}
-          type={pendingCallType || 'audio'}
-          contact={{
-            name: chatInfo?.name || 'User',
-            avatar: chatInfo?.avatar
-          }}
-          onConfirm={handleConfirmCall}
-          onCancel={() => {
-            setShowCallConfirm(false);
-            setPendingCallType(null);
-          }}
-        />
-
-        {/* Search Overlay */}
-        <AnimatePresence>
-          {showSearch && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-lg flex items-center justify-center"
-            >
-              <div className="bg-gray-900/95 backdrop-blur-lg rounded-xl border border-white/10 shadow-2xl p-4 w-full max-w-md">
-                <div className="flex items-center mb-4">
-                  <h3 className="text-white font-medium text-lg flex-1">
-                    Search in Chat
-                  </h3>
-                  <button
-                    onClick={() => setShowSearch(false)}
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Type your search query..."
-                    className="w-full bg-white/10 border-none rounded-full px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/50"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  {searchResults.length === 0 && (
-                    <p className="text-center text-gray-400 text-sm py-4">
-                      No results found.
-                    </p>
-                  )}
-                  {searchResults.map((result) => (
-                    <div
-                      key={result.id}
-                      className="p-3 rounded-lg hover:bg-white/10 transition-colors"
-                    >
-                      <p className="text-white break-words">{result.content}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
-                        <span>
-                          {new Date(result.timestamp).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </span>
-                        <span className="flex items-center space-x-1">
-                          {result.isStarred && (
-                            <Star size={14} className="text-yellow-400" />
-                          )}
-                          {result.isPinned && (
-                            <Pin size={14} className="text-purple-400" />
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Media Grid Overlay */}
-        <AnimatePresence>
-          {showMediaGrid && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-lg flex items-center justify-center"
-            >
-              <div className="bg-gray-900/95 backdrop-blur-lg rounded-xl border border-white/10 shadow-2xl p-4 w-full max-w-3xl">
-                <div className="flex items-center mb-4">
-                  <h3 className="text-white font-medium text-lg flex-1">
-                    Media, Links, and Docs
-                  </h3>
-                  <button
-                    onClick={() => setShowMediaGrid(false)}
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-200"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {mediaItems.length === 0 && (
-                    <p className="text-center text-gray-400 text-sm py-4 col-span-2">
-                      No media found.
-                    </p>
-                  )}
-                  {mediaItems.map((item) => (
-                    <div
-                      key={item.url}
-                      className="group relative rounded-lg overflow-hidden cursor-pointer"
-                      onClick={() => {
-                        // Open media in full screen or modal
-                      }}
-                    >
-                      {item.type === 'image' ? (
-                        <Image
-                          src={item.url}
-                          alt="Media"
-                          width={200}
-                          height={200}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                          <Play size={40} className="text-white" />
-                        </div>
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <span className="text-white text-sm font-medium">
-                          {item.type === 'image' ? 'Image' : 'Video'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Wallpaper Picker */}
-        <AnimatePresence>
-          {showWallpaperPicker && renderWallpaperPicker()}
-        </AnimatePresence>
-
-        {/* Date Picker */}
-        <AnimatePresence>
-          {showDatePicker && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-lg flex items-center justify-center"
-            >
-              <div className="bg-gray-900/95 rounded-xl border border-white/10 p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-white font-medium">Jump to Date</h3>
-                  <button
-                    onClick={() => setShowDatePicker(false)}
-                    className="p-2 hover:bg-white/10 rounded-full"
-                  >
-                    <X size={20} className="text-gray-400" />
-                  </button>
-                </div>
-                {/* Add your preferred date picker component here */}
-                <input
-                  type="date"
-                  onChange={(e) => handleJumpToDate(new Date(e.target.value))}
-                  className="w-full bg-white/10 border-none rounded-lg px-4 py-2 text-white"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Media Viewer */}
-        <AnimatePresence>
-          {selectedMedia && (
-            <MediaViewer
-              media={selectedMedia}
-              onClose={() => setSelectedMedia(null)}
-            />
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
 
@@ -1990,6 +1914,88 @@ const styles = `
   @keyframes gradient {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
+    
     100% { background-position: 0% 50%; }
   }
 `;
+
+// BottomSheet component to handle navigation between Apps, Gallery, Camera
+function BottomSheet({
+  page,
+  onClose,
+  onNavigate,
+  chatId,
+}: {
+  page: 'apps' | 'gallery' | 'camera' | null,
+  onClose: () => void,
+  onNavigate: (p: 'apps' | 'gallery' | 'camera' | null) => void,
+  chatId: string
+}) {
+  if (!page) return null;
+  // Helper stubs for unimplemented features
+  const notImplemented = (feature: string) => alert(`${feature} feature coming soon!`);
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-gray-900/95 w-full max-w-lg rounded-t-2xl p-6 border-t border-white/10 shadow-2xl min-h-[320px]">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-white font-medium">
+            {page === 'apps' && 'Apps & Attachments'}
+            {page === 'gallery' && 'Gallery'}
+            {page === 'camera' && 'Camera'}
+          </span>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-gray-400">
+            <X size={20} />
+          </button>
+        </div>
+        {page === 'apps' && (
+          <div className="grid grid-cols-4 gap-4">
+            <AppsPanelButton icon={<ImageIcon size={28} />} label="Gallery" onClick={() => onNavigate('gallery')} />
+            <AppsPanelButton icon={<Camera size={28} />} label="Camera" onClick={() => onNavigate('camera')} />
+            <AppsPanelButton icon={<MapPin size={28} />} label="Location" onClick={() => notImplemented('Location')} />
+            <AppsPanelButton icon={<User size={28} />} label="Contacts" onClick={() => notImplemented('Contacts')} />
+            <AppsPanelButton icon={<FileText size={28} />} label="Documents" onClick={() => notImplemented('Documents')} />
+            <AppsPanelButton icon={<PollIcon />} label="Poll" onClick={() => notImplemented('Poll')} />
+            <AppsPanelButton icon={<Calendar size={28} />} label="Event" onClick={() => notImplemented('Event')} />
+            <AppsPanelButton icon={<Video size={28} />} label="Media" onClick={() => notImplemented('Media')} />
+          </div>
+        )}
+        {page === 'gallery' && <GalleryPanel chatId={chatId} onBack={() => onNavigate('apps')} />}
+        {page === 'camera' && <CameraPanel chatId={chatId} onBack={() => onNavigate('apps')} />}
+      </div>
+    </div>
+  );
+}
+function AppsPanelButton({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
+  return (
+    <button
+      className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-200 hover:scale-105 text-center"
+      onClick={onClick}
+    >
+      <div className="mb-1">{icon}</div>
+      <div className="text-xs font-medium text-white">{label}</div>
+    </button>
+  );
+}
+function PollIcon() { return <span className="text-2xl">📊</span>; }
+
+// GalleryPanel stub
+function GalleryPanel({ chatId, onBack }: { chatId: string, onBack: () => void }) {
+  // TODO: Load gallery images from API
+  return (
+    <div>
+      <button onClick={onBack} className="mb-2 text-xs text-purple-400 underline">← Back</button>
+      <div className="text-white text-sm">Gallery (coming soon)</div>
+    </div>
+  );
+}
+
+// CameraPanel stub
+function CameraPanel({ chatId, onBack }: { chatId: string, onBack: () => void }) {
+  // TODO: Implement camera capture/upload
+  return (
+    <div>
+      <button onClick={onBack} className="mb-2 text-xs text-purple-400 underline">← Back</button>
+      <div className="text-white text-sm">Camera (coming soon)</div>
+    </div>
+  );
+}

@@ -46,3 +46,37 @@ export async function GET(
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }
+
+export async function POST(
+  req: Request,
+  { params }: { params: { chatId: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const formData = await req.formData();
+  const file = formData.get('file') as File;
+  if (!file) {
+    return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  }
+  // For demo: just store file as a base64 string (replace with cloud upload in production)
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const base64 = `data:${file.type};base64,${buffer.toString('base64')}`;
+  const mediaType = file.type.startsWith('image') ? 'IMAGE'
+    : file.type.startsWith('video') ? 'VIDEO'
+    : file.type.startsWith('audio') ? 'AUDIO'
+    : 'DOCUMENT';
+  const message = await prisma.message.create({
+    data: {
+      chatId: params.chatId,
+      senderId: session.user.id,
+      mediaUrl: base64,
+      mediaType,
+      content: mediaType === 'DOCUMENT' ? file.name : '',
+      status: 'sent'
+    }
+  });
+  return NextResponse.json({ message });
+}

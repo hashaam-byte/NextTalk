@@ -78,6 +78,9 @@ model Chat {
 
   calls Call[]
 
+  polls        Poll[]        // <-- Add this line
+  events       Event[]       // <-- Add this line
+
   locked       Boolean       @default(false) // Add this field for locked chats
   lockPin      String?       // Add this field for chat PIN (hashed)
   disappearing Boolean       @default(false) // Add this field for disappearing messages
@@ -405,8 +408,8 @@ model Comment {
   postId      String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   topicPost   TopicPost? @relation("PostComments", fields: [topicPostId], references: [id])
   topicPostId String?
   type        String?    // 'text', 'emoji', 'sticker'
@@ -475,4 +478,24 @@ model chatTheme {
   theme    String
   // composite key for upsert
   @@id([chatId, userId])
+}
+
+model Poll {
+  id        String   @id @default(cuid())
+  chatId    String
+  question  String
+  options   String[] // Array of options
+  votes     Json?    // { userId: optionIndex }
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  chatId    String
+  title     String
+  date      DateTime
+  location  String?
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
